@@ -45,6 +45,12 @@ int main(void) {
         env.shape_kiting_max_dist = defaults.shape_kiting_max_dist;
         env.shape_wave_stall_start = defaults.shape_wave_stall_start;
         env.shape_wave_stall_ramp_interval = defaults.shape_wave_stall_ramp_interval;
+        env.shape_jad_heal_penalty = defaults.shape_jad_heal_penalty;
+
+        /* Obs ablation flags default to 0 (no ablation) for the standalone harness. */
+        env.obs_ablate_npc_distance = 0;
+        env.obs_ablate_incoming_aggregates = 0;
+        env.obs_ablate_npc_valid = 0;
     }
 
     fc_init(&env.state);

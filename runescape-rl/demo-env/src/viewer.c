@@ -240,6 +240,12 @@ typedef struct {
     int reward_breakdown_tick;
     int reward_config_loaded;
     char reward_config_path[FC_REWARD_CONFIG_PATH_MAX];
+    /* Obs ablation flags (matches FightCaves env). Applied AFTER fc_write_obs
+     * in write_obs_to_pipe so policy replay sees the same obs distribution it
+     * was trained on. See fc_apply_obs_ablation in fc-core/src/fc_state.c. */
+    int obs_ablate_npc_distance;
+    int obs_ablate_incoming_aggregates;
+    int obs_ablate_npc_valid;
     /* Smooth movement interpolation — stored by stable slot (player + NPC array index) */
     float prev_player_x, prev_player_y;
     float prev_npc_x[FC_MAX_NPCS];
@@ -312,8 +318,22 @@ static void reward_params_apply_key(FcRewardParams* params,
     else if (strcmp(key, "shape_wave_stall_ramp_interval") == 0) params->shape_wave_stall_ramp_interval = (int)strtol(value, NULL, 10);
 }
 
+static void obs_ablation_apply_key(ViewerState* v,
+                                   const char* key,
+                                   const char* value) {
+    if (strcmp(key, "obs_ablate_npc_distance") == 0)
+        v->obs_ablate_npc_distance = (int)strtol(value, NULL, 10);
+    else if (strcmp(key, "obs_ablate_incoming_aggregates") == 0)
+        v->obs_ablate_incoming_aggregates = (int)strtol(value, NULL, 10);
+    else if (strcmp(key, "obs_ablate_npc_valid") == 0)
+        v->obs_ablate_npc_valid = (int)strtol(value, NULL, 10);
+}
+
 static void load_reward_params(ViewerState* v) {
     v->reward_params = fc_reward_default_params();
+    v->obs_ablate_npc_distance = 0;
+    v->obs_ablate_incoming_aggregates = 0;
+    v->obs_ablate_npc_valid = 0;
     v->reward_config_loaded = 0;
     snprintf(v->reward_config_path, sizeof(v->reward_config_path), "%s", "defaults");
 
@@ -349,6 +369,7 @@ static void load_reward_params(ViewerState* v) {
             if (*key == '\0' || *value == '\0') continue;
 
             reward_params_apply_key(&v->reward_params, key, value);
+            obs_ablation_apply_key(v, key, value);
         }
 
         fclose(f);
@@ -1017,6 +1038,12 @@ static void write_obs_to_pipe(ViewerState* v) {
     /* Write policy obs + 5-head action mask = FC_POLICY_OBS_SIZE + 36 floats */
     float obs_buf[FC_OBS_SIZE];
     fc_write_obs(&v->state, obs_buf);
+    /* Mirror training-time obs ablation so the policy sees the distribution
+     * it was trained on (no-op when all flags are 0). */
+    fc_apply_obs_ablation(obs_buf,
+                          v->obs_ablate_npc_distance,
+                          v->obs_ablate_incoming_aggregates,
+                          v->obs_ablate_npc_valid);
     float mask_buf[FC_ACTION_MASK_SIZE];
     fc_write_mask(&v->state, mask_buf);
 

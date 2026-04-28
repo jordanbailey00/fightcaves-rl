@@ -47,6 +47,22 @@ void fc_destroy(FcState* state);
  * Values are normalized to [0,1] via divisor tables. */
 void fc_write_obs(const FcState* state, float* out);
 
+/* Zero specific observation slots in-place (for obs-ablation experiments).
+ * Apply AFTER fc_write_obs. Each flag, when non-zero, zeroes the
+ * corresponding region of the policy obs (does not touch reward features
+ * or the action mask):
+ *   ablate_npc_distance         — zeroes FC_NPC_DISTANCE for all 8 NPC slots
+ *   ablate_incoming_aggregates  — zeroes the 6 player-block IN_*_1T/2T fields
+ *                                  + the 3 meta-block IN_*_3T fields
+ *   ablate_npc_valid            — zeroes FC_NPC_VALID for all 8 NPC slots
+ *
+ * out must point to the same buffer fc_write_obs filled (length FC_TOTAL_OBS).
+ * No-op when all three flags are 0. */
+void fc_apply_obs_ablation(float* out,
+                           int ablate_npc_distance,
+                           int ablate_incoming_aggregates,
+                           int ablate_npc_valid);
+
 /* Write the action mask buffer.
  * out must have room for FC_ACTION_MASK_SIZE floats.
  * 1.0 = valid action, 0.0 = invalid. */

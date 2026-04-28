@@ -97,7 +97,7 @@ typedef struct {
 
 /* Puffer-facing observation size:
  *   policy obs + masks for heads 0-4 only (move/attack/prayer/eat/drink)
- *   = 106 + 36 = 142
+ *   = 122 + 36 = 158
  */
 #define FC_PUFFER_OBS_SIZE (FC_POLICY_OBS_SIZE + FC_MOVE_DIM + FC_ATTACK_DIM + FC_PRAYER_DIM + FC_EAT_DIM + FC_DRINK_DIM)
 
@@ -139,6 +139,7 @@ typedef struct FightCaves {
     float shape_unnecessary_prayer_penalty;
     float shape_wave_stall_base_penalty;
     float shape_wave_stall_cap;
+    float shape_jad_heal_penalty;
     int shape_resource_threat_window;
     int shape_kiting_min_dist;
     int shape_kiting_max_dist;
@@ -146,6 +147,14 @@ typedef struct FightCaves {
     int shape_wave_stall_ramp_interval;
     int ticks_since_attack;      /* ticks since agent last dealt damage */
     int ticks_in_wave;           /* ticks since current wave started (reset on wave_clear) */
+
+    /* Obs ablation flags (experimental — see fc_apply_obs_ablation in fc_state.c).
+     * When non-zero, the corresponding obs slots are zeroed AFTER fc_write_obs.
+     * Used by the OBS Sweep / Ablation experiment to test which features the
+     * policy actually relies on vs. which the GRU could re-derive from the rest. */
+    int obs_ablate_npc_distance;
+    int obs_ablate_incoming_aggregates;
+    int obs_ablate_npc_valid;
 
     int ep_length;
 
@@ -168,6 +177,12 @@ static void fc_puffer_write_obs(FightCaves* env) {
 
     /* Policy observations */
     fc_write_obs(&env->state, obs);
+
+    /* Optional obs ablation (zero specific feature slots in-place) */
+    fc_apply_obs_ablation(obs,
+                          env->obs_ablate_npc_distance,
+                          env->obs_ablate_incoming_aggregates,
+                          env->obs_ablate_npc_valid);
 
     /* Action mask: 36 floats (5 heads only, skip walk-to-tile heads) */
     float full_mask[FC_ACTION_MASK_SIZE];
@@ -202,6 +217,7 @@ static FcRewardParams fc_reward_params_from_env(const FightCaves* env) {
     params.shape_unnecessary_prayer_penalty = env->shape_unnecessary_prayer_penalty;
     params.shape_wave_stall_base_penalty = env->shape_wave_stall_base_penalty;
     params.shape_wave_stall_cap = env->shape_wave_stall_cap;
+    params.shape_jad_heal_penalty = env->shape_jad_heal_penalty;
 
     params.shape_resource_threat_window = env->shape_resource_threat_window;
     params.shape_kiting_min_dist = env->shape_kiting_min_dist;

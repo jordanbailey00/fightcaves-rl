@@ -31,6 +31,7 @@ typedef struct {
     float shape_unnecessary_prayer_penalty;
     float shape_wave_stall_base_penalty;
     float shape_wave_stall_cap;
+    float shape_jad_heal_penalty;       /* per Yt-HurKot heal proc that lands on Jad */
 
     int shape_resource_threat_window;
     int shape_kiting_min_dist;
@@ -74,6 +75,7 @@ typedef struct {
     float kiting;
     float safespot_attack;
     float wave_stall;
+    float jad_heal;
 
     float invalid_action;
     float tick_penalty;
@@ -103,6 +105,7 @@ typedef enum {
     FC_CH_KITING,
     FC_CH_SAFESPOT_ATTACK,
     FC_CH_WAVE_STALL,
+    FC_CH_JAD_HEAL,
     FC_CH_INVALID_ACTION,
     FC_CH_TICK_PENALTY,
     FC_CH_COUNT
@@ -113,7 +116,8 @@ static const char* const FC_CH_NAMES[FC_CH_COUNT] = {
     "player_death", "food_waste", "pot_waste",
     "correct_jad_prayer", "correct_danger_prayer", "wrong_danger_prayer",
     "unnecessary_prayer", "melee_pressure", "wasted_attack",
-    "kiting", "safespot_attack", "wave_stall", "invalid_action", "tick_penalty"
+    "kiting", "safespot_attack", "wave_stall", "jad_heal",
+    "invalid_action", "tick_penalty"
 };
 
 /* Populate a contiguous array view of the breakdown channels for iteration.
@@ -136,6 +140,7 @@ static inline void fc_reward_breakdown_channels(const FcRewardBreakdown* b, floa
     out[FC_CH_KITING]                   = b->kiting;
     out[FC_CH_SAFESPOT_ATTACK]          = b->safespot_attack;
     out[FC_CH_WAVE_STALL]               = b->wave_stall;
+    out[FC_CH_JAD_HEAL]                 = b->jad_heal;
     out[FC_CH_INVALID_ACTION]           = b->invalid_action;
     out[FC_CH_TICK_PENALTY]             = b->tick_penalty;
 }
@@ -165,6 +170,7 @@ static inline FcRewardParams fc_reward_default_params(void) {
     params.shape_unnecessary_prayer_penalty = -0.2f;
     params.shape_wave_stall_base_penalty = 0.0f;
     params.shape_wave_stall_cap = 0.0f;
+    params.shape_jad_heal_penalty = 0.0f;
 
     params.shape_resource_threat_window = 2;
     params.shape_kiting_min_dist = 5;
@@ -349,6 +355,15 @@ static inline FcRewardBreakdown fc_reward_compute_breakdown(
         runtime->ticks_in_wave = 0;
     }
 
+    /* Jad heal penalty: fires per Yt-HurKot heal proc that landed on Jad
+     * this tick. Encourages the agent to break healer link or kill healers
+     * before they restore Jad's HP. */
+    if (state->jad_heal_procs_this_tick > 0 &&
+        params->shape_jad_heal_penalty != 0.0f) {
+        out.jad_heal = params->shape_jad_heal_penalty *
+                       (float)state->jad_heal_procs_this_tick;
+    }
+
     out.total =
         out.damage_dealt +
         out.damage_taken +
@@ -367,6 +382,7 @@ static inline FcRewardBreakdown fc_reward_compute_breakdown(
         out.kiting +
         out.safespot_attack +
         out.wave_stall +
+        out.jad_heal +
         out.invalid_action +
         out.tick_penalty;
 

@@ -66,6 +66,8 @@ void my_init(Env* env, Dict* kwargs) {
     env->shape_wave_stall_base_penalty = item ? (float)item->value : defaults.shape_wave_stall_base_penalty;
     item = dict_get_unsafe(kwargs, "shape_wave_stall_cap");
     env->shape_wave_stall_cap = item ? (float)item->value : defaults.shape_wave_stall_cap;
+    item = dict_get_unsafe(kwargs, "shape_jad_heal_penalty");
+    env->shape_jad_heal_penalty = item ? (float)item->value : defaults.shape_jad_heal_penalty;
     item = dict_get_unsafe(kwargs, "shape_resource_threat_window");
     env->shape_resource_threat_window = item ? (int)item->value : defaults.shape_resource_threat_window;
     item = dict_get_unsafe(kwargs, "shape_kiting_min_dist");
@@ -76,6 +78,15 @@ void my_init(Env* env, Dict* kwargs) {
     env->shape_wave_stall_start = item ? (int)item->value : defaults.shape_wave_stall_start;
     item = dict_get_unsafe(kwargs, "shape_wave_stall_ramp_interval");
     env->shape_wave_stall_ramp_interval = item ? (int)item->value : defaults.shape_wave_stall_ramp_interval;
+
+    /* Obs ablation flags (default 0 — i.e. no ablation, full obs).
+     * See fc_apply_obs_ablation in fc-core/src/fc_state.c for what each zeroes. */
+    item = dict_get_unsafe(kwargs, "obs_ablate_npc_distance");
+    env->obs_ablate_npc_distance = item ? (int)item->value : 0;
+    item = dict_get_unsafe(kwargs, "obs_ablate_incoming_aggregates");
+    env->obs_ablate_incoming_aggregates = item ? (int)item->value : 0;
+    item = dict_get_unsafe(kwargs, "obs_ablate_npc_valid");
+    env->obs_ablate_npc_valid = item ? (int)item->value : 0;
 
     /* Initialize game state */
     env->seed_counter = 0;

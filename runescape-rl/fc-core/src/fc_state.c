@@ -453,6 +453,33 @@ void fc_write_obs(const FcState* state, float* out) {
     fc_write_reward_features(state, out + FC_REWARD_START);
 }
 
+void fc_apply_obs_ablation(float* out,
+                           int ablate_npc_distance,
+                           int ablate_incoming_aggregates,
+                           int ablate_npc_valid) {
+    if (ablate_npc_distance) {
+        for (int s = 0; s < FC_OBS_NPC_SLOTS; s++) {
+            out[FC_OBS_NPC_START + s * FC_OBS_NPC_STRIDE + FC_NPC_DISTANCE] = 0.0f;
+        }
+    }
+    if (ablate_incoming_aggregates) {
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_MEL_1T] = 0.0f;
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_RNG_1T] = 0.0f;
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_MAG_1T] = 0.0f;
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_MEL_2T] = 0.0f;
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_RNG_2T] = 0.0f;
+        out[FC_OBS_PLAYER_START + FC_OBS_PLAYER_IN_MAG_2T] = 0.0f;
+        out[FC_OBS_META_START + FC_OBS_META_IN_MEL_3T] = 0.0f;
+        out[FC_OBS_META_START + FC_OBS_META_IN_RNG_3T] = 0.0f;
+        out[FC_OBS_META_START + FC_OBS_META_IN_MAG_3T] = 0.0f;
+    }
+    if (ablate_npc_valid) {
+        for (int s = 0; s < FC_OBS_NPC_SLOTS; s++) {
+            out[FC_OBS_NPC_START + s * FC_OBS_NPC_STRIDE + FC_NPC_VALID] = 0.0f;
+        }
+    }
+}
+
 void fc_write_reward_features(const FcState* state, float* out) {
     memset(out, 0, sizeof(float) * FC_REWARD_FEATURES);
 
