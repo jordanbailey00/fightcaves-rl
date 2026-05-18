@@ -7,10 +7,13 @@ Training a reinforcement learning agent to complete the Old School RuneScape Fig
 - Train a PPO agent from scratch to clear all 63 waves and defeat Jad
 - Achieve this without human demonstrations or hardcoded strategies
 
-**Current results (v28.8 / v29.1 / v30.0):**
-- Agent reaches wave 63 (Jad) on **97.3% of episodes** from cold start
+**Current results (v35.1 — `gacjanj0` / sweet-plant-580):**
+- Agent reaches wave 63 (Jad) on **~99% of episodes** from cold start
 - Learned safespotting, prayer switching, kiting, and resource management
-- **Jad kill rate: 59.7% peak (v28.8), 30.2% final (v29.1 SOTA)** — full Jad-kill capability
+- **Jad kill rate: 94.9% peak, sustained 90%+ band between 1.1B–1.6B steps** — the agent
+  reliably wins the Fight Caves from a cold-start PPO run
+- v35.1 reproduces hparams from `a3mi6u2g`, the top pick of the v34 long Protein sweep
+  (200 trials over PPO/optimizer/policy knobs on v32.0 baseline)
 - Cold-start training: ~26 min for 3B steps on RTX 5070 Ti (~1.9M SPS)
 
 ![Agent Demo](runescape-rl/assets/demo.gif)
@@ -31,8 +34,8 @@ Training a reinforcement learning agent to complete the Old School RuneScape Fig
 ### Clone & Setup
 
 ```bash
-git clone https://github.com/jordanbailey00/OSRS-FightCaves-RL.git
-cd OSRS-FightCaves-RL/runescape-rl
+git clone https://github.com/jordanbailey00/FightCaves-RL.git
+cd FightCaves-RL/runescape-rl
 
 # Create virtual environment
 python3 -m venv .venv
@@ -135,7 +138,7 @@ runescape-rl/
 
 ## RL Config
 
-Current live config (v30.0 — v28.8 baseline with dead full-waste keys removed):
+Current live config (v35.1 — v32.0 reward baseline + v34 sweep top-pick hparams):
 
 | Category | Key params |
 |----------|-----------|
@@ -145,9 +148,12 @@ Current live config (v30.0 — v28.8 baseline with dead full-waste keys removed)
 | **Positioning** | `shape_npc_melee_penalty=-0.8`, `shape_safespot_attack_reward=1.5`, `shape_kiting_reward=2.2` (band 2-10) |
 | **Resource management** | `shape_food_waste_scale=-1.2`, `shape_pot_waste_scale=-1.2` (proportional waste only) |
 | **Wave-stall pressure** | `shape_wave_stall_start=1400`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_cap=-2.0` |
-| **Procedural penalties** | `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`, `shape_wasted_attack_penalty=-0.1` |
-| **PPO** | `lr=3e-4`, `gamma=0.999`, `gae_lambda=0.95`, `ent_coef=0.01`, `horizon=256`, `minibatch=4096`, `total_timesteps=3B` |
-| **Policy** | MinGRU, 2 layers, 256 hidden (~439K params) |
+| **Procedural penalties** | `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`, `shape_wasted_attack_penalty=-0.1`, `shape_jad_heal_penalty=-0.3` |
+| **PPO (swept)** | `lr=9e-4`, `gamma=0.9963`, `gae_lambda=0.9641`, `ent_coef=0.0242`, `clip_coef=0.178`, `vf_coef=1.0`, `max_grad_norm=0.25` |
+| **VTrace / prio replay (swept)** | `replay_ratio=1.568`, `vtrace_rho_clip=0.5`, `vtrace_c_clip=0.504`, `prio_alpha=0.968` |
+| **Adam (swept)** | `beta1=0.95`, `beta2=0.9996`, `eps=1e-10` |
+| **Schedule** | `horizon=256`, `minibatch=4096`, `total_timesteps=3B`, `anneal_lr=off` |
+| **Policy** | MinGRU, 3 layers, 256 hidden |
 | **Vector** | `4096 agents`, `2 buffers` |
 
 Full config: [`runescape-rl/config/fight_caves.ini`](runescape-rl/config/fight_caves.ini).
@@ -156,44 +162,53 @@ Full config: [`runescape-rl/config/fight_caves.ini`](runescape-rl/config/fight_c
 
 ## Results
 
-### Deployment SOTA: v29.1 (`ml71cg6v` / autumn-bush-330)
+### Current SOTA: v35.1 (`gacjanj0` / sweet-plant-580)
 
-v29.1 disables prioritized experience replay (`prio_alpha=0`) on top of the v28.8 reward config. Best deployment artifact at the 1.62B checkpoint.
+v35.1 reproduces the hparams from `a3mi6u2g`, the top pick from the v34 long Protein sweep
+(200 trials over PPO/optimizer/policy knobs on the v32.0 reward baseline). Cold-start reproduction beat the original sweep result.
 
-| Metric | v28.8 (prior SOTA) | **v29.1 (current SOTA)** | Δ |
-|--------|---|---|---|
-| peak `jad_kill_rate` | 0.591 | **0.598** | +1.2% |
-| peak step | 1.80B | **1.56B** | -240M (-13% compute) |
-| best 250M window | 0.316 | **0.336** | +6.3% |
-| final `jad_kill_rate` | 0.223 | **0.281** | +26% |
-| final `reached_wave_63` | 0.973 | 0.930 | -4.4% |
-| final conditional Jad kill | 22.9% | **30.2%** | +32% |
-| training time | 26 min (3B steps) | 26 min (3B steps) | — |
-| throughput | 1.92M SPS | 1.92M SPS | — |
+| Metric | v32.0 (prior SOTA) | v34 sweep best (`a3mi6u2g`) | **v35.1 (current SOTA, `gacjanj0`)** |
+|---|---:|---:|---:|
+| peak `jad_kill_rate` | 0.810 | 0.886 | **0.949** |
+| peak step | 1.98B | 2.03B | **1.215B** |
+| top-10 cluster | — | 0.85–0.89 | **0.90–0.95** (steps 1.10B–1.62B) |
+| peak `wave_reached` (avg over rollouts) | 62.7 | 63.0 | **62.92** |
+| training time | 26 min | ~26 min | ~26 min (3B steps) |
+| throughput | 1.92M SPS | ~1.9M SPS | ~1.9M SPS |
+
+The v35.1 config holds the v32.0 reward shaping unchanged and swaps in only the PPO/optimizer/policy hparams the sweep found:
+`lr=9e-4` (3x the v32 default), `gamma=0.9963`, `ent_coef=0.024`, `vf_coef=1.0`, `replay_ratio=1.57`, `prio_alpha=0.97`, 3-layer MinGRU.
 
 ### Key Milestones
 
 - **v21.2** — First cold start to reach wave 60 (range-7 weapon, no LOS)
 - **v22.1** — First Jad kills (1.5%, warm-started), introduced TBow combat model
 - **v25.9** — First cold start under TBow+LOS to reach wave 60+
-- **v28.4** — 20-50% Jad kill rate at 3.5B budget
-- **v28.8** — 59.1% peak Jad kill rate, 22.3% final (prior deployment SOTA, 3B budget)
-- **v29.1** — `prio_alpha=0` ablation: 33% compute reduction at same-or-better deployment quality (current SOTA)
-- **v30.0** — v28.8 baseline with dead `*_full_waste_penalty` keys removed; verified byte-identical to v28.8
+- **v28.4** — 20–50% Jad kill rate at 3.5B budget
+- **v28.8** — 59.1% peak Jad kill rate (prior reward-shape SOTA)
+- **v29.1** — `prio_alpha=0` ablation: 33% compute reduction at same-or-better deployment quality
+- **v30.0** — v28.8 baseline with dead `*_full_waste_penalty` keys removed; verified byte-identical
+- **v32.0** — Added `shape_jad_heal_penalty=-0.3`: peak jad kill 0.810 (+15.4% over obs.1 prior SOTA)
+- **v34 sweep** — 200-trial Protein sweep on v32.0 baseline; identified PPO/optimizer recipe that lifted peak by another ~8.5%
+- **v35.1** — Cold-start reproduction of v34's top pick (`a3mi6u2g`); **peak jad kill rate 94.9% — current SOTA**
 
-### Active: 3-Sweep Pruning Plan
+### Hparam Recipe (from the v34 sweep)
 
-The agent now reliably kills Jad. Current focus is pruning the reward config and tuning hparams via three sequential sweeps:
+Across the top 7 stable runs in the sweep, several knobs pinned at the same values (likely correct defaults — drop from future sweeps): `hidden_size=256`, `total_agents=4096`, `horizon=256`, `minibatch_size=4096`. The variable knobs Protein wanted to push:
 
-1. **Sweep 1 (complete)** — leave-one-out reward ablation (10 runs). Identified 2 dead-code keys (full-waste penalties) for removal and `w_npc_kill` as over-penalizing (peak +0.21 when zeroed).
-2. **Sweep 2 (planned)** — non-reward hparam sweep (Protein/paretosweep over LR, ent_coef, clip, gamma, prio_alpha, etc.).
-3. **Sweep 3 (planned)** — reward magnitude sweep on surviving keys.
+| Hparam | v32.0 baseline | Top picks |
+|---|---:|---:|
+| `learning_rate` | 3e-4 | **9e-4** (6 of 7), 7.75e-4 (1 of 7) — pinned at sweep upper bound |
+| `gamma` | 0.999 | 0.9900–0.9963 — all picks **below** v32 |
+| `replay_ratio` | 1.0 | 1.44–1.60 — well above default |
+| `ent_coef` | 0.01 | 0.0153–0.0300 |
+| `num_layers` | 2 | 3 (5 of 7), 2 (2 of 7) — 3-layer dominates |
 
 ---
 
 ## Project Status
 
-Active research. The agent reaches Jad on 97% of episodes and kills it at 59.7% peak rate. Current focus is reward and hparam pruning via sequential sweeps to find a tighter, deployment-ready config.
+The Fight Caves agent now clears Jad at ~95% peak. Active focus is post-sweep analysis: identify whether the late-training degradation (peak at 1.2B, drop to ~0.62 by 3B with lr=9e-4) is fixable with a lr schedule or an earlier-stop policy, and run a follow-up sweep with the pinned knobs dropped.
 
 ---
 

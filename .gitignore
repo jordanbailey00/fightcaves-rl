@@ -20,3 +20,8 @@ pufferlib/box2d-web/
 *.md
 !/README.md
 /AGENT_README
+
+# Stray wandb run files written to repo root, and locally-built ELF
+/config.yaml
+/wandb-metadata.json
+/pufferlib_4/fight_caves
