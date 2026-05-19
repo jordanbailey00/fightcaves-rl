@@ -240,10 +240,22 @@ else
         fi
     fi
 
+    NVML_LINK_INPUT="-lnvidia-ml"
+    if ! ${CXX:-g++} -Wl,--no-as-needed -lnvidia-ml -Wl,--as-needed -x c++ - -o /tmp/fc_nvml_link_check >/dev/null 2>&1 <<<'int main(){return 0;}'; then
+        for dir in "$CUDA_HOME/lib64" /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu; do
+            VERSIONED_NVML=$(find "$dir" -maxdepth 1 -name 'libnvidia-ml.so*' 2>/dev/null | sort | head -n 1)
+            if [ -n "$VERSIONED_NVML" ]; then
+                NVML_LINK_INPUT="$VERSIONED_NVML"
+                echo "Using versioned NVML link target: $VERSIONED_NVML"
+                break
+            fi
+        done
+    fi
+
     ${CXX:-g++} -shared -fPIC -fopenmp \
         build/bindings.o "$STATIC_LIB" "$RAYLIB_A" \
         -L"$CUDA_HOME/lib64" $CUDNN_LFLAG \
-        -lcudart -lnccl -lnvidia-ml -lcublas -lcusolver -lcurand $CUDNN_LINK_INPUT \
+        -lcudart -lnccl $NVML_LINK_INPUT -lcublas -lcusolver -lcurand $CUDNN_LINK_INPUT \
         -lgomp -O2 $RENDER_LIBS \
         -Bsymbolic-functions \
         -o "$OUTPUT"

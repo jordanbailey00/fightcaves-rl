@@ -78,6 +78,10 @@ void my_init(Env* env, Dict* kwargs) {
     env->shape_wave_stall_start = item ? (int)item->value : defaults.shape_wave_stall_start;
     item = dict_get_unsafe(kwargs, "shape_wave_stall_ramp_interval");
     env->shape_wave_stall_ramp_interval = item ? (int)item->value : defaults.shape_wave_stall_ramp_interval;
+    item = dict_get_unsafe(kwargs, "initial_sharks");
+    env->initial_sharks = item ? (int)item->value : FC_MAX_SHARKS;
+    item = dict_get_unsafe(kwargs, "initial_prayer_doses");
+    env->initial_prayer_doses = item ? (int)item->value : FC_MAX_PRAYER_DOSES;
 
     /* Obs ablation flags (default 0 — i.e. no ablation, full obs).
      * See fc_apply_obs_ablation in fc-core/src/fc_state.c for what each zeroes. */

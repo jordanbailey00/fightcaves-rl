@@ -374,11 +374,10 @@ static void decrement_player_timers(FcPlayer* p) {
 
 /*
  * Jad healer spawn (from TzhaarFightCave.kt npcLevelChanged handler):
- *   Trigger: Jad HP drops below 50% of max.
+ *   Trigger: Jad HP drops below 150 HP.
  *   Spawns up to 4 Yt-HurKot (fills missing slots: 4 - currently_alive).
- *   Respawn: Only after Jad is healed back above 50% and drops below again.
- *   The jad_healers_spawned flag tracks whether we're in a "healed" state.
- *   When Jad is healed above 50%, flag resets so next drop below 50% re-triggers.
+ *   Respawn: Only after healers restore Jad to full HP and he crosses the
+ *   threshold again. Crossing back above the threshold is not enough to re-arm.
  */
 static void check_jad_healers(FcState* state) {
     if (state->current_wave != FC_NUM_WAVES) return;  /* only on wave 63 */
@@ -388,15 +387,15 @@ static void check_jad_healers(FcState* state) {
         FcNpc* jad = &state->npcs[i];
         if (jad->npc_type != NPC_TZTOK_JAD || !jad->active || jad->is_dead) continue;
 
-        int half_hp = jad->max_hp / 2;
-
-        /* If Jad is above 50%, reset the spawn flag (allows re-trigger) */
-        if (jad->current_hp >= half_hp) {
+        /* Re-arm respawns only after Jad has been healed all the way to full. */
+        if (jad->current_hp >= jad->max_hp) {
             state->jad_healers_spawned = 0;
             return;
         }
 
-        /* Below 50% — spawn healers if not already spawned this cycle */
+        if (jad->current_hp >= FC_JAD_HEALER_THRESHOLD_HP_TENTHS) return;
+
+        /* Below threshold — spawn healers if not already spawned this cycle */
         if (state->jad_healers_spawned) return;
 
         /* Count currently alive healers */

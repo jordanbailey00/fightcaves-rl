@@ -70,11 +70,14 @@ if [ -n "$BACKEND_REBUILD_REASON" ]; then
     bash "$TRAINING_BUILD_SH"
 fi
 
-MODE="${1:-train}"
-if [ "$MODE" = "sweep" ] || [ "$MODE" = "paretosweep" ]; then
-    shift
-elif [ "$MODE" != "train" ] && [ "$MODE" != "eval" ]; then
-    MODE="train"
+MODE="train"
+if [ "$#" -gt 0 ]; then
+    case "$1" in
+        train|eval|sweep|paretosweep)
+            MODE="$1"
+            shift
+            ;;
+    esac
 fi
 
 WANDB_FLAG="--wandb"

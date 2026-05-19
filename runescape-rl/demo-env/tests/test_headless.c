@@ -19,6 +19,7 @@
 #include "fc_npc.h"
 #include "fc_pathfinding.h"
 #include "fc_reward.h"
+#include "fc_wave.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -612,7 +613,89 @@ static void test_hurkot_distraction(void) {
 }
 
 /* ====================================================================== */
-/* Test 9: Ready-idle prayer reward gating                                */
+/* Test 9: Jad healer respawn re-arm                                      */
+/* ====================================================================== */
+
+static int count_alive_hurkot(const FcState* state) {
+    int count = 0;
+    for (int i = 0; i < FC_MAX_NPCS; i++) {
+        const FcNpc* n = &state->npcs[i];
+        if (n->active && !n->is_dead && n->npc_type == NPC_YT_HURKOT)
+            count++;
+    }
+    return count;
+}
+
+static void remove_alive_hurkot(FcState* state) {
+    for (int i = 0; i < FC_MAX_NPCS; i++) {
+        FcNpc* n = &state->npcs[i];
+        if (n->active && n->npc_type == NPC_YT_HURKOT) {
+            n->active = 0;
+            n->is_dead = 1;
+        }
+    }
+    state->npcs_remaining = 1;  /* Jad only */
+}
+
+static void test_jad_healer_respawn_requires_full_heal(void) {
+    printf("\n=== Jad Healer Respawn Re-arm ===\n");
+
+    FcState state;
+    char err[128];
+    int actions[FC_NUM_ACTION_HEADS] = {0};
+
+    init_manual_test_state(&state);
+    state.current_wave = FC_NUM_WAVES;
+    state.npcs_remaining = 1;
+    fc_npc_spawn(&state.npcs[0], NPC_TZTOK_JAD, 20, 20, 0);
+
+    int spawn_hp = FC_JAD_HEALER_THRESHOLD_HP_TENTHS;
+    state.npcs[0].current_hp = spawn_hp - 10;
+    fc_step(&state, actions);
+
+    TEST("Jad first drop below 150 HP spawns four healers");
+    int count = count_alive_hurkot(&state);
+    if (count == FC_JAD_NUM_HEALERS && state.jad_healers_spawned) PASS();
+    else {
+        snprintf(err, sizeof(err), "healers=%d spawned=%d",
+                 count, state.jad_healers_spawned);
+        FAIL(err);
+    }
+
+    remove_alive_hurkot(&state);
+    state.npcs[0].current_hp = spawn_hp + 10;
+    fc_step(&state, actions);
+    state.npcs[0].current_hp = spawn_hp - 10;
+    fc_step(&state, actions);
+
+    TEST("Healers do not respawn after Jad only heals above threshold");
+    count = count_alive_hurkot(&state);
+    if (count == 0 && state.jad_healers_spawned) PASS();
+    else {
+        snprintf(err, sizeof(err), "healers=%d spawned=%d",
+                 count, state.jad_healers_spawned);
+        FAIL(err);
+    }
+
+    state.npcs[0].current_hp = state.npcs[0].max_hp;
+    fc_step(&state, actions);
+    state.npcs[0].current_hp = spawn_hp - 10;
+    fc_step(&state, actions);
+
+    TEST("Healers respawn after Jad was restored to full HP");
+    count = count_alive_hurkot(&state);
+    if (count == FC_JAD_NUM_HEALERS && state.jad_healers_spawned) PASS();
+    else {
+        snprintf(err, sizeof(err), "healers=%d spawned=%d",
+                 count, state.jad_healers_spawned);
+        FAIL(err);
+    }
+
+    fc_destroy(&state);
+}
+
+/* ====================================================================== */
+/* Test 10: Ready-idle prayer reward gating                               */
 /* ====================================================================== */
 
 static void test_ready_idle_prayer_gate(void) {
@@ -666,7 +749,7 @@ static void test_ready_idle_prayer_gate(void) {
 }
 
 /* ====================================================================== */
-/* Test 10: Jad prayer reward timing                                       */
+/* Test 11: Jad prayer reward timing                                       */
 /* ====================================================================== */
 
 static void test_jad_prayer_reward_timing(void) {
@@ -776,6 +859,7 @@ int main(void) {
     test_melee_safespot_gating();
     test_player_attack_requires_los();
     test_hurkot_distraction();
+    test_jad_healer_respawn_requires_full_heal();
     test_ready_idle_prayer_gate();
     test_jad_prayer_reward_timing();
 

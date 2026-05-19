@@ -46,6 +46,8 @@ int main(void) {
         env.shape_wave_stall_start = defaults.shape_wave_stall_start;
         env.shape_wave_stall_ramp_interval = defaults.shape_wave_stall_ramp_interval;
         env.shape_jad_heal_penalty = defaults.shape_jad_heal_penalty;
+        env.initial_sharks = FC_MAX_SHARKS;
+        env.initial_prayer_doses = FC_MAX_PRAYER_DOSES;
 
         /* Obs ablation flags default to 0 (no ablation) for the standalone harness. */
         env.obs_ablate_npc_distance = 0;

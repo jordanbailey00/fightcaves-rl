@@ -2,7 +2,7 @@
  * fc_render.h — PufferLib c_render() implementation for Fight Caves.
  *
  * Self-contained Raylib rendering for eval mode. Loads terrain, objects,
- * and NPC models from demo-env/assets/. Provides camera controls, entity
+ * and NPC models through the shared Fight Caves asset resolver. Provides camera controls, entity
  * rendering, HP/prayer bars, and a header overlay.
  *
  * Included by fight_caves.h when FC_RENDER is defined.
@@ -110,35 +110,6 @@ typedef struct {
 } FcrState;
 
 /* ======================================================================== */
-/* Asset path resolution                                                     */
-/* ======================================================================== */
-
-static const char* fcr_find_asset(const char* name) {
-    static char path[512];
-    /* Try multiple search paths */
-    const char* dirs[] = {
-        "demo-env/assets",
-        "../demo-env/assets",
-        "../../demo-env/assets",
-        "../runescape-rl/demo-env/assets",
-        "../../runescape-rl/demo-env/assets",
-        NULL
-    };
-    /* Check FC_ASSETS_PATH env var first */
-    const char* env_path = getenv("FC_ASSETS_PATH");
-    if (env_path) {
-        snprintf(path, sizeof(path), "%s/%s", env_path, name);
-        if (FileExists(path)) return path;
-    }
-    for (int i = 0; dirs[i]; i++) {
-        snprintf(path, sizeof(path), "%s/%s", dirs[i], name);
-        if (FileExists(path)) return path;
-    }
-    fprintf(stderr, "[fc_render] Asset not found: %s\n", name);
-    return NULL;
-}
-
-/* ======================================================================== */
 /* Helpers                                                                   */
 /* ======================================================================== */
 
@@ -175,28 +146,26 @@ static void fcr_init(FcrState* rs) {
     rs->paused = 0;
 
     /* Load terrain */
-    const char* tp = fcr_find_asset("fightcaves.terrain");
-    if (tp) {
-        rs->terrain = terrain_load(tp);
+    if (fc_asset_exists("fightcaves.terrain")) {
+        rs->terrain = terrain_load("fightcaves.terrain");
         if (rs->terrain && rs->terrain->loaded)
             terrain_offset(rs->terrain, 2368, 5056);
     }
 
     /* Load objects */
-    const char* op = fcr_find_asset("fightcaves.objects");
-    if (op) {
-        rs->objects = objects_load(op);
+    if (fc_asset_exists("fightcaves.objects")) {
+        rs->objects = objects_load("fightcaves.objects");
         if (rs->objects && rs->objects->loaded)
             objects_offset(rs->objects, 2368, 5056);
     }
 
     /* Load NPC models */
-    const char* np = fcr_find_asset("fc_npcs.models");
-    if (np) rs->npc_models = fc_npc_models_load(np);
+    if (fc_asset_exists("fc_npcs.models"))
+        rs->npc_models = fc_npc_models_load("fc_npcs.models");
 
     /* Load player model */
-    const char* pp = fcr_find_asset("fc_player.models");
-    if (pp) rs->player_model = fc_npc_models_load(pp);
+    if (fc_asset_exists("fc_player.models"))
+        rs->player_model = fc_npc_models_load("fc_player.models");
 
     /* Init prev state */
     rs->prev_player_hp = 0;

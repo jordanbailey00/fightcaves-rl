@@ -350,7 +350,7 @@ typedef struct {
     uint8_t walkable[FC_ARENA_WIDTH][FC_ARENA_HEIGHT];
 
     /* Jad healer state */
-    int jad_healers_spawned;  /* 1 if Yt-HurKot healers already spawned this wave */
+    int jad_healers_spawned;  /* 1 until Jad has been healed back to full HP */
 
     /* Per-tick aggregated event flags (for reward features) */
     int damage_dealt_this_tick;

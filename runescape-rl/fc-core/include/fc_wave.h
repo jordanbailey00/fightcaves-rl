@@ -34,8 +34,9 @@ void fc_wave_spawn(FcState* state, int wave_num);
  * Returns 1 if wave was advanced, 0 otherwise. */
 int fc_wave_check_advance(FcState* state);
 
-/* Jad healer spawn threshold: spawn 4 Yt-HurKot when Jad HP drops below this */
-#define FC_JAD_HEALER_THRESHOLD_FRAC  0.5f  /* 50% HP */
+/* Jad healer spawn threshold: spawn 4 Yt-HurKot when Jad HP drops below this.
+ * Respawns are re-armed only if the previous healers restored Jad to full HP. */
+#define FC_JAD_HEALER_THRESHOLD_HP_TENTHS  1500  /* 150 HP */
 #define FC_JAD_NUM_HEALERS            4
 
 #endif /* FC_WAVE_H */

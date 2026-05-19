@@ -145,6 +145,8 @@ typedef struct FightCaves {
     int shape_kiting_max_dist;
     int shape_wave_stall_start;
     int shape_wave_stall_ramp_interval;
+    int initial_sharks;
+    int initial_prayer_doses;
     int ticks_since_attack;      /* ticks since agent last dealt damage */
     int ticks_in_wave;           /* ticks since current wave started (reset on wave_clear) */
 
@@ -263,6 +265,13 @@ static float fc_puffer_compute_reward(FightCaves* env) {
 void c_reset(FightCaves* env) {
     env->seed_counter++;
     fc_reset(&env->state, env->seed_counter);
+    if (env->initial_sharks < 0) env->initial_sharks = 0;
+    if (env->initial_sharks > FC_MAX_SHARKS) env->initial_sharks = FC_MAX_SHARKS;
+    if (env->initial_prayer_doses < 0) env->initial_prayer_doses = 0;
+    if (env->initial_prayer_doses > FC_MAX_PRAYER_DOSES)
+        env->initial_prayer_doses = FC_MAX_PRAYER_DOSES;
+    env->state.player.sharks_remaining = env->initial_sharks;
+    env->state.player.prayer_doses_remaining = env->initial_prayer_doses;
 
     env->ep_length = 0;
     env->ticks_since_attack = 0;

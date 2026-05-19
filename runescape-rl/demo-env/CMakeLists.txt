@@ -5,6 +5,9 @@ set(FC_VIEWER_SOURCES
     src/viewer.c
     src/fc_hash.c
     src/fc_debug.c
+    src/ui.c
+    src/ui_assets.c
+    src/ui_interfaces.c
 )
 
 set(RAYLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/raylib" CACHE PATH "Raylib root")
@@ -47,3 +50,11 @@ target_include_directories(test_headless PRIVATE
     ${PROJECT_SOURCE_DIR}/fc-core/include
 )
 target_link_libraries(test_headless PRIVATE fc_core m)
+
+add_executable(validate_assets
+    tests/validate_assets.c
+)
+target_include_directories(validate_assets PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_test(NAME validate_assets COMMAND validate_assets)

@@ -6,7 +6,7 @@
  * Controls:
  *   WASD        — move (N/W/S/E)            Space    — pause/resume
  *   1/2/3       — protect melee/range/magic  Right    — single-step tick
- *   F           — eat shark                  Side panel — TPS buttons
+ *   F           — eat shark                  Clan tab — TPS buttons
  *   P           — drink prayer potion        R        — reset episode
  *   Tab         — cycle attack target        A        — toggle auto/manual
  *   O or D*     — toggle debug overlay       G        — grid  C — collision
@@ -32,7 +32,11 @@
 #include "fc_objects_loader.h"
 #include "fc_npc_models.h"
 #include "fc_anim_loader.h"
+#include "fc_spotanims.h"
+#include "fc_asset_raylib.h"
 #include "fc_debug_overlay.h"
+#include "ui.h"
+#include "ui_reference.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,13 +77,31 @@ static const uint16_t NPC_ANIM_ATTACK[] = {
 static const uint16_t NPC_ANIM_DEATH[] = {
     0, 2620, 2627, 2627, 2630, 2638, 2646, 2654, 2638
 };
+#define JAD_ANIM_RANGED 2652
+#define JAD_ANIM_MELEE  2655
+#define JAD_ANIM_MAGIC  2656
 
 /* Projectile spotanim IDs for model lookup */
-#define PROJ_CROSSBOW_BOLT  27
-#define PROJ_TOK_XIL_SPINE  443
-#define PROJ_KET_ZEK_FIRE   445
-#define PROJ_JAD_RANGED     440
-#define PROJ_JAD_MAGIC      439
+#define PROJ_CROSSBOW_BOLT      27
+#define PROJ_JAD_MAGIC_LAUNCH   439
+#define PROJ_JAD_RANGE_LAUNCH   440
+#define PROJ_TOK_XIL_SPINE      443
+#define PROJ_TOK_XIL_IMPACT     444
+#define PROJ_KET_ZEK_FIRE       445
+#define PROJ_KET_ZEK_IMPACT     446
+#define PROJ_JAD_MAGIC_TRAVEL   445
+#define PROJ_JAD_MAGIC_IMPACT   446
+#define PROJ_JAD_RANGED_TRAVEL  448
+#define PROJ_JAD_RANGED_IMPACT  451
+#define PROJ_SPOTANIM_MODEL_BASE 0xA2000000u
+#define FC_PLAYER_MODEL_BASE 0xFC000000u
+
+#define FC_UI_ITEM_VIAL          229u
+#define FC_UI_ITEM_SHARK         385u
+#define FC_UI_ITEM_PRAYER_POT_3  139u
+#define FC_UI_ITEM_PRAYER_POT_2  141u
+#define FC_UI_ITEM_PRAYER_POT_1  143u
+#define FC_UI_ITEM_PRAYER_POT_4  2434u
 
 /* Colors */
 #define COL_BG          CLITERAL(Color){ 80, 80, 85, 255 }
@@ -102,30 +124,13 @@ static const uint16_t NPC_ANIM_DEATH[] = {
 #define COL_HIT_RED     CLITERAL(Color){ 255,  50,  50, 255 }
 #define COL_HIT_BLUE    CLITERAL(Color){  50, 100, 255, 255 }
 
-/* Asset paths */
-static const char* TERRAIN_PATHS[] = {
-    "demo-env/assets/fightcaves.terrain", "../demo-env/assets/fightcaves.terrain",
-    "assets/fightcaves.terrain", NULL };
-static const char* OBJECTS_PATHS[] = {
-    "demo-env/assets/fightcaves.objects", "../demo-env/assets/fightcaves.objects",
-    "assets/fightcaves.objects", NULL };
-static const char* SPRITE_DIRS[] = {
-    "demo-env/assets/sprites/",
-    "../demo-env/assets/sprites/",
-    "../../demo-env/assets/sprites/",
-    "assets/sprites/",
-    "../assets/sprites/",
-    NULL
-};
 #define FC_REWARD_CONFIG_PATH_MAX 256
-static const char* REWARD_CONFIG_PATHS[] = {
-    "config/fight_caves.ini",
-    "../config/fight_caves.ini",
-    "../../config/fight_caves.ini",
-    NULL
-};
 #define FC_WORLD_ORIGIN_X 2368
 #define FC_WORLD_ORIGIN_Y 5056
+#define VIEWER_RUNEC_UI_COMPONENT_ID(group_id, file_id) \
+    ((((uint32_t)(group_id)) << 16) | ((uint32_t)(file_id) & 0xffffu))
+#define VIEWER_RUNEC_TOP_SIDE_CONTAINER \
+    VIEWER_RUNEC_UI_COMPONENT_ID(161u, 73u)
 
 /* Hitsplat — OSRS-style damage splat rendered as 2D overlay */
 typedef struct {
@@ -145,8 +150,42 @@ typedef struct {
     float elapsed;
     Color color;
     float radius;
-    uint32_t spot_id;            /* spotanim ID for model lookup (0 = use sphere) */
+    uint32_t spot_id;            /* travel spotanim ID (0 = no travel visual) */
+    uint32_t launch_spot_id;
+    uint32_t impact_spot_id;
+    int profiled;
+    float client_start_time;
+    float client_end_time;
+    float projectile_angle;
+    float projectile_progress;
+    AnimModelState* anim_state;
+    uint16_t anim_seq;
+    int anim_frame;
+    float anim_timer;
 } VisualProjectile;
+
+#define MAX_VISUAL_EFFECTS 32
+typedef struct {
+    int active;
+    float x, y, z;
+    float total_time;
+    float elapsed;
+    Color color;
+    float radius;
+    uint32_t spot_id;
+    float yaw_degrees;
+    AnimModelState* anim_state;
+    uint16_t anim_seq;
+    int anim_frame;
+    float anim_timer;
+} VisualEffect;
+
+typedef struct {
+    AnimModelState* anim_state;
+    uint16_t anim_seq;
+    int anim_frame;
+    float anim_timer;
+} ObjectAnimRuntime;
 
 /* NPC colors by type */
 static const Color NPC_COLORS[] = {
@@ -164,6 +203,7 @@ static const Color NPC_COLORS[] = {
 /* Viewer state */
 typedef struct {
     FcState state;
+    RuneCUiState ui;
     FcRenderEntity entities[FC_MAX_RENDER_ENTITIES];
     int entity_count;
     int paused, step_once;
@@ -181,9 +221,14 @@ typedef struct {
     /* Terrain + Objects + NPC models */
     TerrainMesh* terrain;
     ObjectMesh* objects;
+    ObjectAnimSet* object_anims;
+    NpcModelSet* object_anim_models;
+    ObjectAnimRuntime* object_anim_runtimes;
+    int object_anim_runtime_count;
     NpcModelSet* npc_models;
     NpcModelSet* player_model;
     NpcModelSet* projectile_models;
+    SpotAnimSet* spotanims;
     /* Animation cache (shared by player + all NPCs) */
     AnimCache* anim_cache;
     /* Player animation state */
@@ -196,6 +241,8 @@ typedef struct {
     uint16_t npc_anim_seq[FC_MAX_NPCS];
     int npc_anim_frame[FC_MAX_NPCS];
     float npc_anim_timer[FC_MAX_NPCS];
+    int npc_attack_visual_style[FC_MAX_NPCS];
+    float npc_attack_visual_timer[FC_MAX_NPCS];
     /* Hitsplats */
     Hitsplat hitsplats[MAX_HITSPLATS];
     /* Buffered key inputs (captured every frame, consumed on tick) */
@@ -204,8 +251,11 @@ typedef struct {
     int panel_npc_slot[8];   /* NPC array index for each panel row */
     int panel_npc_y[8];      /* screen Y of each panel row */
     int panel_npc_count;     /* how many rows drawn */
+    int clan_wave_dropdown_open;
+    int clan_wave_scroll;
     /* Visual projectiles in flight */
     VisualProjectile projectiles[MAX_PROJECTILES];
+    VisualEffect effects[MAX_VISUAL_EFFECTS];
     /* Prayer overhead icon textures */
     Texture2D pray_melee_tex, pray_missiles_tex, pray_magic_tex;
     /* Side panel tabs (Phase 8h) */
@@ -234,6 +284,8 @@ typedef struct {
     int policy_episode_limit; /* 0 = unlimited auto-reset, >0 = stop after N episodes */
     int policy_episode_count; /* number of completed policy-pipe episodes */
     int start_wave;     /* 0 = wave 1 (default), >0 = skip to this wave on reset */
+    int initial_sharks;
+    int initial_prayer_doses;
     FcRewardParams reward_params;
     FcRewardRuntime reward_runtime;
     FcRewardBreakdown reward_breakdown;
@@ -256,8 +308,499 @@ typedef struct {
 
 /* Forward declarations */
 static int process_tab_click(ViewerState* v, float mx, float my);
+static void draw_tex_fit(Texture2D tex, int dx, int dy, int dw, int dh,
+                         Color tint);
+
+static void set_ui_slot(RuneCUiSlot* slot, uint32_t item_id,
+                        uint32_t icon_item_id, int quantity,
+                        const char* label) {
+    if (!slot) return;
+    memset(slot, 0, sizeof(*slot));
+    if (item_id == 0 || quantity <= 0) return;
+    slot->item_id = item_id;
+    slot->icon_item_id = icon_item_id ? icon_item_id : item_id;
+    slot->quantity = quantity;
+    snprintf(slot->label, sizeof(slot->label), "%s", label ? label : "Item");
+    slot->enabled = 1;
+}
+
+static uint32_t prayer_potion_item_id_for_doses(int doses) {
+    switch (doses) {
+        case 4: return FC_UI_ITEM_PRAYER_POT_4;
+        case 3: return FC_UI_ITEM_PRAYER_POT_3;
+        case 2: return FC_UI_ITEM_PRAYER_POT_2;
+        case 1: return FC_UI_ITEM_PRAYER_POT_1;
+        default: return FC_UI_ITEM_VIAL;
+    }
+}
+
+static const char* prayer_potion_label_for_doses(int doses) {
+    switch (doses) {
+        case 4: return "Prayer potion(4)";
+        case 3: return "Prayer potion(3)";
+        case 2: return "Prayer potion(2)";
+        case 1: return "Prayer potion(1)";
+        default: return "Vial";
+    }
+}
+
+typedef struct {
+    int slot;
+    uint32_t item_id;
+    const char* label;
+} FcUiEquipmentItem;
+
+static const FcUiEquipmentItem FC_UI_LOADOUT_A_EQUIPMENT[] = {
+    {0, 1169, "Coif"},
+    {3, 9185, "Rune crossbow"},
+    {4, 2503, "Black d'hide body"},
+    {6, 9143, "Adamant bolts"},
+    {7, 2497, "Black d'hide chaps"},
+    {9, 2491, "Black d'hide vambraces"},
+    {10, 6328, "Snakeskin boots"},
+};
+
+static const FcUiEquipmentItem FC_UI_LOADOUT_B_EQUIPMENT[] = {
+    {0, 27226, "Masori mask (f)"},
+    {1, 22109, "Ava's assembler"},
+    {2, 19547, "Necklace of anguish"},
+    {3, 20997, "Twisted bow"},
+    {4, 27229, "Masori body (f)"},
+    {6, 11212, "Dragon arrows"},
+    {7, 27232, "Masori chaps (f)"},
+    {9, 26235, "Zaryte vambraces"},
+    {10, 13237, "Pegasian boots"},
+    {12, 27614, "Venator ring"},
+};
+
+static uint32_t fc_ui_active_prayer_bits(int prayer) {
+    switch (prayer) {
+        case PRAYER_PROTECT_MAGIC: return 1u << 16;
+        case PRAYER_PROTECT_RANGE: return 1u << 17;
+        case PRAYER_PROTECT_MELEE: return 1u << 18;
+        default: return 0;
+    }
+}
+
+static int fc_ui_prayer_action_for_slot(const FcPlayer* p, int slot) {
+    int prayer = PRAYER_NONE;
+    int action = FC_PRAYER_OFF;
+    if (slot == 16) {
+        prayer = PRAYER_PROTECT_MAGIC;
+        action = FC_PRAYER_MAGIC;
+    } else if (slot == 17) {
+        prayer = PRAYER_PROTECT_RANGE;
+        action = FC_PRAYER_RANGE;
+    } else if (slot == 18) {
+        prayer = PRAYER_PROTECT_MELEE;
+        action = FC_PRAYER_MELEE;
+    } else {
+        return 0;
+    }
+    if (!p || p->current_prayer <= 0) return 0;
+    return p->prayer == prayer ? FC_PRAYER_OFF : action;
+}
+
+static void queue_viewer_prayer_button(ViewerState* v, int prayer, int action) {
+    if (!v) return;
+    FcPlayer* p = &v->state.player;
+    if (p->current_prayer <= 0)
+        return;
+    v->pending_prayer = (p->prayer == prayer) ? FC_PRAYER_OFF : action;
+}
+
+static void load_ui_item_icon(RuneCUiState* ui, uint32_t item_id) {
+    if (!ui || item_id == 0) return;
+    char path[128];
+    snprintf(path, sizeof(path), "data/sprites/items/item_%u.png", item_id);
+    if (!fc_asset_exists(path)) return;
+    Texture2D tex = fc_load_texture_asset(path);
+    if (tex.id == 0) return;
+    SetTextureFilter(tex, TEXTURE_FILTER_POINT);
+    runec_ui_set_item_icon(ui, item_id, tex);
+}
+
+static void load_fc_ui_item_icons(ViewerState* v) {
+    static const uint32_t ids[] = {
+        FC_UI_ITEM_VIAL, FC_UI_ITEM_SHARK,
+        FC_UI_ITEM_PRAYER_POT_1, FC_UI_ITEM_PRAYER_POT_2,
+        FC_UI_ITEM_PRAYER_POT_3, FC_UI_ITEM_PRAYER_POT_4,
+        1169, 2491, 2497, 2503, 6328, 9143, 9185,
+        10499, 11212, 13237, 19547, 20997, 21902, 22109,
+        26235, 27226, 27229, 27232, 27614,
+    };
+    if (!v) return;
+    for (int i = 0; i < (int)(sizeof(ids) / sizeof(ids[0])); i++)
+        load_ui_item_icon(&v->ui, ids[i]);
+}
+
+static void sync_fc_ui_items(ViewerState* v) {
+    if (!v) return;
+    FcPlayer* p = &v->state.player;
+    for (int i = 0; i < RUNEC_UI_INV_SLOT_COUNT; i++)
+        memset(&v->ui.inventory[i], 0, sizeof(v->ui.inventory[i]));
+
+    int doses = p->prayer_doses_remaining;
+    if (doses < 0) doses = 0;
+    if (doses > FC_MAX_PRAYER_DOSES) doses = FC_MAX_PRAYER_DOSES;
+    int full_pots = doses / 4;
+    int partial = doses % 4;
+    for (int slot = 0; slot < 8; slot++) {
+        int slot_doses = 0;
+        if (slot < full_pots) slot_doses = 4;
+        else if (slot == full_pots && partial > 0) slot_doses = partial;
+        uint32_t item_id = prayer_potion_item_id_for_doses(slot_doses);
+        set_ui_slot(&v->ui.inventory[slot], item_id, item_id, 1,
+                    prayer_potion_label_for_doses(slot_doses));
+    }
+    for (int slot = 8; slot < RUNEC_UI_INV_SLOT_COUNT; slot++) {
+        if (slot - 8 < p->sharks_remaining) {
+            set_ui_slot(&v->ui.inventory[slot], FC_UI_ITEM_SHARK,
+                        FC_UI_ITEM_SHARK, 1, "Shark");
+        }
+    }
+
+    for (int i = 0; i < RUNEC_UI_EQUIP_SLOT_COUNT; i++)
+        memset(&v->ui.equipment[i], 0, sizeof(v->ui.equipment[i]));
+
+    const FcUiEquipmentItem* equip = FC_UI_LOADOUT_B_EQUIPMENT;
+    int equip_count = (int)(sizeof(FC_UI_LOADOUT_B_EQUIPMENT)
+                            / sizeof(FC_UI_LOADOUT_B_EQUIPMENT[0]));
+    if (v->active_loadout == 0) {
+        equip = FC_UI_LOADOUT_A_EQUIPMENT;
+        equip_count = (int)(sizeof(FC_UI_LOADOUT_A_EQUIPMENT)
+                            / sizeof(FC_UI_LOADOUT_A_EQUIPMENT[0]));
+    }
+    for (int i = 0; i < equip_count; i++) {
+        if (equip[i].slot >= 0 && equip[i].slot < RUNEC_UI_EQUIP_SLOT_COUNT) {
+            int quantity = equip[i].slot == 6 ? p->ammo_count : 1;
+            set_ui_slot(&v->ui.equipment[equip[i].slot], equip[i].item_id,
+                        equip[i].item_id, quantity, equip[i].label);
+        }
+    }
+}
+
+static void sync_fc_ui_status(ViewerState* v) {
+    if (!v) return;
+    FcPlayer* p = &v->state.player;
+    runec_ui_sync_status(&v->ui, FC_WORLD_ORIGIN_X + p->x,
+                         FC_WORLD_ORIGIN_Y + p->y, p->x, p->y,
+                         (uint32_t)v->state.tick, p->is_running, v->paused);
+    v->ui.hitpoints = p->current_hp > 0 ? (p->current_hp + 9) / 10 : 0;
+    v->ui.hitpoints_max = p->max_hp > 0 ? (p->max_hp + 9) / 10 : 0;
+    v->ui.prayer_points = p->current_prayer > 0 ? (p->current_prayer + 9) / 10 : 0;
+    v->ui.prayer_points_max = p->max_prayer > 0 ? (p->max_prayer + 9) / 10 : 0;
+    v->ui.active_prayers = fc_ui_active_prayer_bits(p->prayer);
+    v->ui.run_energy = p->run_energy / 100;
+    if (v->ui.run_energy < 0) v->ui.run_energy = 0;
+    if (v->ui.run_energy > 100) v->ui.run_energy = 100;
+    v->ui.selected_combat_style = v->combat_style == 2 ? 3 : v->combat_style;
+    v->ui.auto_retaliate = 1;
+    v->ui.special_attack_energy = 100;
+    v->ui.combat_level = 126;
+    runec_ui_set_combat_weapon_name(&v->ui,
+        p->weapon_kind == FC_WEAPON_TWISTED_BOW ? "Twisted bow" : "Rune crossbow");
+    runec_ui_set_combat_style_profile(&v->ui,
+        p->weapon_kind == FC_WEAPON_TWISTED_BOW ? 25 : 9);
+
+    for (int i = 0; i < RUNEC_UI_SKILL_COUNT; i++) {
+        v->ui.skill_current[i] = 1;
+        v->ui.skill_base[i] = 1;
+    }
+    v->ui.skill_current[0] = v->ui.skill_base[0] = p->attack_level;
+    v->ui.skill_current[1] = v->ui.skill_base[1] = p->strength_level;
+    v->ui.skill_current[2] = v->ui.skill_base[2] = p->defence_level;
+    v->ui.skill_current[3] = v->ui.skill_base[3] = p->ranged_level;
+    v->ui.skill_current[4] = v->ui.skill_base[4] = p->prayer_level;
+    v->ui.skill_current[5] = v->ui.skill_base[5] = p->magic_level;
+    v->ui.skill_current[8] = v->ui.skill_base[8] = p->max_hp / 10;
+    int total = 0;
+    for (int i = 0; i < RUNEC_UI_SKILL_COUNT; i++)
+        total += v->ui.skill_base[i];
+    v->ui.skill_total = total;
+}
+
+static Color minimap_color_for_tile(ViewerState* v, int x, int y) {
+    if (!v || x < 0 || x >= FC_ARENA_WIDTH || y < 0 || y >= FC_ARENA_HEIGHT)
+        return BLANK;
+    if (!v->state.walkable[x][y])
+        return (Color){42, 34, 26, 255};
+    if (v->terrain && v->terrain->loaded)
+        return (Color){82, 70, 52, 255};
+    return (Color){64, 88, 48, 255};
+}
+
+static void sync_fc_ui_minimap(ViewerState* v) {
+    if (!v) return;
+    FcPlayer* p = &v->state.player;
+    Color pixels[152 * 152];
+    const float scale = 4.0f;
+    for (int y = 0; y < 152; y++) {
+        for (int x = 0; x < 152; x++) {
+            float sx = (float)x - 76.0f;
+            float sy = (float)y - 76.0f;
+            if (sx * sx + sy * sy > 75.0f * 75.0f) {
+                pixels[x + y * 152] = BLANK;
+                continue;
+            }
+            int tx = (int)roundf((float)p->x + sx / scale);
+            int ty = (int)roundf((float)p->y - sy / scale);
+            pixels[x + y * 152] = minimap_color_for_tile(v, tx, ty);
+        }
+    }
+    runec_ui_update_minimap(&v->ui, pixels, 152, 152);
+
+    runec_ui_clear_minimap(&v->ui);
+    runec_ui_add_minimap_dot(&v->ui, 0.0f, 0.0f, RUNEC_UI_MINIMAP_DOT_PLAYER);
+    if (p->route_idx < p->route_len && p->route_len > 0) {
+        int tx = p->route_x[p->route_len - 1];
+        int ty = p->route_y[p->route_len - 1];
+        runec_ui_add_minimap_dot(&v->ui, (float)tx - (float)p->x,
+                                 (float)ty - (float)p->y,
+                                 RUNEC_UI_MINIMAP_DOT_DESTINATION);
+    }
+    for (int i = 0; i < FC_MAX_NPCS; i++) {
+        FcNpc* n = &v->state.npcs[i];
+        if (!n->active || n->is_dead) continue;
+        float nx = (float)n->x + (float)n->size * 0.5f;
+        float ny = (float)n->y + (float)n->size * 0.5f;
+        runec_ui_add_minimap_dot(&v->ui, nx - (float)p->x,
+                                 ny - (float)p->y,
+                                 RUNEC_UI_MINIMAP_DOT_NPC);
+    }
+}
+
+static void sync_fc_ui(ViewerState* v) {
+    sync_fc_ui_items(v);
+    sync_fc_ui_status(v);
+    sync_fc_ui_minimap(v);
+}
+
+static void route_player_to_tile(ViewerState* v, int tx, int ty) {
+    if (!v || tx < 0 || tx >= FC_ARENA_WIDTH || ty < 0 || ty >= FC_ARENA_HEIGHT)
+        return;
+    FcPlayer* p = &v->state.player;
+    if (!v->state.walkable[tx][ty]) return;
+    int steps = fc_pathfind_bfs(p->x, p->y, tx, ty, v->state.walkable,
+                                p->route_x, p->route_y, FC_MAX_ROUTE);
+    p->route_len = steps;
+    p->route_idx = 0;
+    p->attack_target_idx = -1;
+    p->approach_target = 0;
+}
+
+static void handle_runec_ui_intent(ViewerState* v) {
+    if (!v) return;
+    RuneCUiIntent* intent = &v->ui.last_intent;
+    FcPlayer* p = &v->state.player;
+    switch (intent->kind) {
+        case RUNEC_UI_INTENT_INVENTORY_SLOT:
+            if (intent->primary >= 0 && intent->primary < 8) {
+                int full_pots = p->prayer_doses_remaining / 4;
+                int partial = p->prayer_doses_remaining % 4;
+                if (intent->primary < full_pots ||
+                        (intent->primary == full_pots && partial > 0))
+                    v->pending_drink = FC_DRINK_PRAYER_POT;
+            } else if (intent->primary >= 8 && intent->primary < 28) {
+                if (intent->primary - 8 < p->sharks_remaining)
+                    v->pending_eat = FC_EAT_SHARK;
+            }
+            break;
+        case RUNEC_UI_INTENT_INVENTORY_ACTION:
+            if (strcmp(intent->text, "Use") == 0 || strcmp(intent->text, "Drink") == 0)
+                v->pending_drink = FC_DRINK_PRAYER_POT;
+            else if (strcmp(intent->text, "Eat") == 0)
+                v->pending_eat = FC_EAT_SHARK;
+            break;
+        case RUNEC_UI_INTENT_PRAYER_SLOT: {
+            int action = fc_ui_prayer_action_for_slot(p, intent->primary);
+            if (action) v->pending_prayer = action;
+            break;
+        }
+        case RUNEC_UI_INTENT_COMBAT_STYLE:
+            v->combat_style = intent->primary == 3 ? 2 : intent->primary;
+            if (v->combat_style < 0) v->combat_style = 0;
+            if (v->combat_style > 2) v->combat_style = 2;
+            break;
+        case RUNEC_UI_INTENT_RUN_TOGGLE:
+            p->is_running = !p->is_running;
+            break;
+        case RUNEC_UI_INTENT_MINIMAP_CLICK: {
+            int dx = (intent->primary - 72) / 4;
+            int dy = (75 - intent->secondary) / 4;
+            route_player_to_tile(v, p->x + dx, p->y + dy);
+            break;
+        }
+        default:
+            break;
+    }
+}
 
 /* Helpers */
+static uint32_t viewer_player_model_id(const ViewerState* v) {
+    int loadout = v ? v->active_loadout : FC_ACTIVE_LOADOUT;
+    if (loadout < 0) loadout = 0;
+    if (loadout >= FC_NUM_LOADOUTS) loadout = FC_ACTIVE_LOADOUT;
+    return FC_PLAYER_MODEL_BASE + (uint32_t)loadout;
+}
+
+static NpcModelEntry* viewer_player_model_entry(ViewerState* v) {
+    if (!v || !v->player_model) return NULL;
+    NpcModelEntry* entry = fc_npc_model_find(v->player_model,
+                                             viewer_player_model_id(v));
+    if (!entry && v->player_model->count > 0)
+        entry = &v->player_model->entries[0];
+    return (entry && entry->loaded) ? entry : NULL;
+}
+
+static void apply_anim_frame_to_entry(NpcModelEntry* entry,
+                                      AnimModelState* state,
+                                      const AnimFrameData* frame_data,
+                                      const AnimFrameBase* fb) {
+    if (!entry || !entry->loaded || !state || !frame_data || !fb) return;
+    anim_apply_frame(state, entry->base_verts, frame_data, fb);
+    models_recompute_texture_uvs_from_vertices(entry, state->verts);
+
+    float* mesh_verts = entry->model.meshes[0].vertices;
+    anim_update_mesh(mesh_verts, state, entry->face_indices, entry->face_count);
+
+    int evc = entry->face_count * 3;
+    for (int vi = 0; vi < evc; vi++) {
+        mesh_verts[vi*3+0] /=  128.0f;
+        mesh_verts[vi*3+1] /=  128.0f;
+        mesh_verts[vi*3+2] /= -128.0f;
+    }
+
+    UpdateMeshBuffer(entry->model.meshes[0], 0, mesh_verts,
+                     evc * 3 * sizeof(float), 0);
+}
+
+static void update_entry_animation(NpcModelEntry* entry,
+                                   AnimCache* cache,
+                                   AnimModelState** state,
+                                   uint16_t* current_seq,
+                                   int* frame_index,
+                                   float* frame_timer,
+                                   int animation_id,
+                                   float dt,
+                                   float phase_ticks) {
+    if (!entry || !entry->loaded || !cache || animation_id < 0 ||
+        !entry->vertex_skins || !state || !current_seq ||
+        !frame_index || !frame_timer)
+        return;
+
+    AnimSequence* seq = anim_get_sequence(cache, (uint16_t)animation_id);
+    if (!seq || seq->frame_count <= 0) return;
+
+    if (!*state || (*state)->vert_count != entry->base_vert_count) {
+        if (*state) anim_model_state_free(*state);
+        *state = anim_model_state_create(entry->vertex_skins,
+                                         entry->base_vert_count);
+        *current_seq = (uint16_t)animation_id;
+        *frame_index = seq->frame_count > 0
+            ? ((int)phase_ticks % seq->frame_count) : 0;
+        if (*frame_index < 0) *frame_index = 0;
+        *frame_timer = 0.0f;
+    }
+
+    if (*current_seq != (uint16_t)animation_id) {
+        *current_seq = (uint16_t)animation_id;
+        *frame_index = 0;
+        *frame_timer = 0.0f;
+    }
+
+    *frame_timer -= dt;
+    if (*frame_timer <= 0.0f) {
+        *frame_index = (*frame_index + 1) % seq->frame_count;
+        float frame_delay = (float)seq->frames[*frame_index].delay * 0.02f;
+        if (frame_delay < 0.016f) frame_delay = 0.016f;
+        *frame_timer = frame_delay;
+    }
+
+    AnimFrameData* fd = &seq->frames[*frame_index].frame;
+    AnimFrameBase* fb = anim_get_framebase(cache, fd->framebase_id);
+    if (fb) apply_anim_frame_to_entry(entry, *state, fd, fb);
+}
+
+static void free_projectile(VisualProjectile* vp) {
+    if (!vp) return;
+    if (vp->anim_state) {
+        anim_model_state_free(vp->anim_state);
+        vp->anim_state = NULL;
+    }
+    memset(vp, 0, sizeof(*vp));
+}
+
+static void free_effect(VisualEffect* fx) {
+    if (!fx) return;
+    if (fx->anim_state) {
+        anim_model_state_free(fx->anim_state);
+        fx->anim_state = NULL;
+    }
+    memset(fx, 0, sizeof(*fx));
+}
+
+static void clear_visuals(ViewerState* v) {
+    if (!v) return;
+    for (int i = 0; i < MAX_PROJECTILES; i++)
+        free_projectile(&v->projectiles[i]);
+    for (int i = 0; i < MAX_VISUAL_EFFECTS; i++)
+        free_effect(&v->effects[i]);
+}
+
+static void recreate_player_anim_state(ViewerState* v, NpcModelEntry* pm) {
+    if (!v || !pm || !pm->loaded || !pm->vertex_skins) return;
+    if (v->player_anim_state &&
+        v->player_anim_state->vert_count == pm->base_vert_count)
+        return;
+    if (v->player_anim_state)
+        anim_model_state_free(v->player_anim_state);
+    v->player_anim_state = anim_model_state_create(pm->vertex_skins,
+                                                   pm->base_vert_count);
+    v->player_anim_seq = PLAYER_ANIM_IDLE;
+    v->player_anim_frame = 0;
+    v->player_anim_timer = 0.0f;
+    fprintf(stderr, "Player animation state created (%d base verts, model %u)\n",
+            pm->base_vert_count, pm->model_id);
+}
+
+static NpcModelEntry* projectile_model_for_spot(ViewerState* v,
+                                                uint32_t spot_id,
+                                                const SpotAnimDef** out_spot) {
+    const SpotAnimDef* spot = (spot_id > 0 && v && v->spotanims)
+        ? spotanim_find(v->spotanims, (int)spot_id) : NULL;
+    if (out_spot) *out_spot = spot;
+    if (!v || spot_id == 0 || !v->projectile_models) return NULL;
+
+    NpcModelEntry* pm = fc_npc_model_find(v->projectile_models,
+                                          PROJ_SPOTANIM_MODEL_BASE + spot_id);
+    if (!pm && spot && spot->model_id >= 0)
+        pm = fc_npc_model_find(v->projectile_models, (uint32_t)spot->model_id);
+    if (!pm)
+        pm = fc_npc_model_find(v->projectile_models, spot_id);
+    return (pm && pm->loaded) ? pm : NULL;
+}
+
+static uint16_t npc_attack_animation_id(int npc_type, int attack_style) {
+    if (npc_type == NPC_TZTOK_JAD) {
+        if (attack_style == ATTACK_MAGIC) return JAD_ANIM_MAGIC;
+        if (attack_style == ATTACK_RANGED) return JAD_ANIM_RANGED;
+        if (attack_style == ATTACK_MELEE) return JAD_ANIM_MELEE;
+    }
+    if (npc_type > 0 && npc_type < 9)
+        return NPC_ANIM_ATTACK[npc_type];
+    return 0;
+}
+
+static void mark_npc_attack_visual(ViewerState* v, int npc_idx,
+                                   int attack_style) {
+    if (!v || npc_idx < 0 || npc_idx >= FC_MAX_NPCS ||
+        attack_style == ATTACK_NONE)
+        return;
+    v->npc_attack_visual_style[npc_idx] = attack_style;
+    v->npc_attack_visual_timer[npc_idx] = 1.15f;
+}
+
 static void text_s(const char* t, int x, int y, int sz, Color c) {
     DrawText(t, x+1, y+1, sz, COL_TEXT_SHADOW);
     DrawText(t, x, y, sz, c);
@@ -329,17 +872,44 @@ static void obs_ablation_apply_key(ViewerState* v,
         v->obs_ablate_npc_valid = (int)strtol(value, NULL, 10);
 }
 
+static void initial_supplies_apply_key(ViewerState* v,
+                                       const char* key,
+                                       const char* value) {
+    if (strcmp(key, "initial_sharks") == 0)
+        v->initial_sharks = (int)strtol(value, NULL, 10);
+    else if (strcmp(key, "initial_prayer_doses") == 0)
+        v->initial_prayer_doses = (int)strtol(value, NULL, 10);
+}
+
+static void apply_initial_supplies(ViewerState* v) {
+    if (v->initial_sharks < 0) v->initial_sharks = 0;
+    if (v->initial_sharks > FC_MAX_SHARKS) v->initial_sharks = FC_MAX_SHARKS;
+    if (v->initial_prayer_doses < 0) v->initial_prayer_doses = 0;
+    if (v->initial_prayer_doses > FC_MAX_PRAYER_DOSES)
+        v->initial_prayer_doses = FC_MAX_PRAYER_DOSES;
+    v->state.player.sharks_remaining = v->initial_sharks;
+    v->state.player.prayer_doses_remaining = v->initial_prayer_doses;
+}
+
 static void load_reward_params(ViewerState* v) {
     v->reward_params = fc_reward_default_params();
+    v->initial_sharks = FC_MAX_SHARKS;
+    v->initial_prayer_doses = FC_MAX_PRAYER_DOSES;
     v->obs_ablate_npc_distance = 0;
     v->obs_ablate_incoming_aggregates = 0;
     v->obs_ablate_npc_valid = 0;
     v->reward_config_loaded = 0;
     snprintf(v->reward_config_path, sizeof(v->reward_config_path), "%s", "defaults");
 
-    for (int i = 0; REWARD_CONFIG_PATHS[i]; i++) {
-        FILE* f = fopen(REWARD_CONFIG_PATHS[i], "r");
-        if (!f) continue;
+    {
+        char config_path[FC_ASSET_PATH_MAX];
+        FILE* f;
+        if (!fc_repo_resolve_path("config/fight_caves.ini",
+                                  config_path, sizeof(config_path))) {
+            return;
+        }
+        f = fopen(config_path, "r");
+        if (!f) return;
 
         char line[512];
         int in_env = 0;
@@ -370,11 +940,13 @@ static void load_reward_params(ViewerState* v) {
 
             reward_params_apply_key(&v->reward_params, key, value);
             obs_ablation_apply_key(v, key, value);
+            initial_supplies_apply_key(v, key, value);
         }
 
         fclose(f);
         v->reward_config_loaded = 1;
-        snprintf(v->reward_config_path, sizeof(v->reward_config_path), "%s", REWARD_CONFIG_PATHS[i]);
+        strncpy(v->reward_config_path, config_path, sizeof(v->reward_config_path) - 1);
+        v->reward_config_path[sizeof(v->reward_config_path) - 1] = '\0';
         return;
     }
 }
@@ -430,9 +1002,17 @@ static int policy_replay_normalize_multiplier(int multiplier) {
     }
 }
 
+static void set_viewer_tps(ViewerState* v, float tps) {
+    if (tps < MIN_TPS) tps = MIN_TPS;
+    if (tps > MAX_TPS) tps = MAX_TPS;
+    v->tps = tps;
+    if (v->tick_acc >= 1.0f)
+        v->tick_acc = fmodf(v->tick_acc, 1.0f);
+}
+
 static void set_policy_replay_speed(ViewerState* v, int multiplier) {
     int normalized = policy_replay_normalize_multiplier(multiplier);
-    v->tps = policy_replay_multiplier_to_tps(normalized);
+    set_viewer_tps(v, policy_replay_multiplier_to_tps(normalized));
     fprintf(stderr, "[policy-pipe] Replay speed set to %dx (%.0f TPS)\n", normalized, v->tps);
 }
 
@@ -464,7 +1044,7 @@ static void set_manual_speed(ViewerState* v, float tps) {
             best_diff = diff;
         }
     }
-    v->tps = best;
+    set_viewer_tps(v, best);
 }
 
 static void format_speed_label(const ViewerState* v, char* buf, size_t buf_size) {
@@ -577,6 +1157,7 @@ static void reset_ep(ViewerState* v) {
         v->state.player.current_hp = v->state.player.max_hp;
         v->state.player.current_prayer = v->state.player.max_prayer;
     }
+    apply_initial_supplies(v);
     fc_fill_render_entities(&v->state, v->entities, &v->entity_count);
     update_reward_breakdown(v);
     v->last_hash = fc_state_hash(&v->state);
@@ -585,7 +1166,7 @@ static void reset_ep(ViewerState* v) {
     v->tick_frac = 1.0f;
     memset(v->actions, 0, sizeof(v->actions));
     memset(v->hitsplats, 0, sizeof(v->hitsplats));
-    memset(v->projectiles, 0, sizeof(v->projectiles));
+    clear_visuals(v);
     v->pending_prayer = 0;
     v->pending_eat = 0;
     v->pending_drink = 0;
@@ -605,26 +1186,112 @@ static void reset_ep(ViewerState* v) {
         v->npc_anim_seq[i] = 0;
         v->npc_anim_frame[i] = 0;
         v->npc_anim_timer[i] = 0;
+        v->npc_attack_visual_style[i] = ATTACK_NONE;
+        v->npc_attack_visual_timer[i] = 0.0f;
     }
 }
 
-static void spawn_projectile(ViewerState* v,
-                             float sx, float sy, float sz,
-                             float dx, float dy, float dz,
-                             float travel_secs, Color col, float radius,
-                             uint32_t spot_id) {
+static void viewer_jump_to_wave(ViewerState* v, int wave) {
+    if (!v) return;
+    if (wave < 1) wave = 1;
+    if (wave > FC_NUM_WAVES) wave = FC_NUM_WAVES;
+
+    for (int i = 0; i < FC_MAX_NPCS; i++) {
+        v->state.npcs[i].active = 0;
+        v->state.npcs[i].is_dead = 0;
+    }
+    v->state.npcs_remaining = 0;
+    v->state.current_wave = wave;
+    fc_wave_spawn(&v->state, wave);
+    v->state.player.current_hp = v->state.player.max_hp;
+    v->state.player.current_prayer = v->state.player.max_prayer;
+    v->state.terminal = TERMINAL_NONE;
+    v->state.jad_healers_spawned = 0;
+    reset_reward_tracking(v);
+    fc_fill_render_entities(&v->state, v->entities, &v->entity_count);
+    update_reward_breakdown(v);
+    memset(v->hitsplats, 0, sizeof(v->hitsplats));
+    clear_visuals(v);
+    v->attack_target = -1;
+    v->tick_frac = 1.0f;
+    dbg_log_clear();
+
+    for (int i = 0; i < FC_MAX_NPCS; i++) {
+        v->prev_npc_x[i] = (float)v->state.npcs[i].x;
+        v->prev_npc_y[i] = (float)v->state.npcs[i].y;
+        v->prev_npc_active[i] = v->state.npcs[i].active;
+        if (v->npc_anim_states[i]) {
+            anim_model_state_free(v->npc_anim_states[i]);
+            v->npc_anim_states[i] = NULL;
+        }
+        v->npc_anim_seq[i] = 0;
+        v->npc_anim_frame[i] = 0;
+        v->npc_anim_timer[i] = 0.0f;
+        v->npc_attack_visual_style[i] = ATTACK_NONE;
+        v->npc_attack_visual_timer[i] = 0.0f;
+    }
+}
+
+static void spawn_spot_effect(ViewerState* v, uint32_t spot_id,
+                              float x, float y, float z,
+                              float duration, Color col, float radius,
+                              float yaw_degrees) {
+    if (!v || spot_id == 0) return;
+    for (int i = 0; i < MAX_VISUAL_EFFECTS; i++) {
+        if (!v->effects[i].active) {
+            VisualEffect* fx = &v->effects[i];
+            memset(fx, 0, sizeof(*fx));
+            fx->active = 1;
+            fx->x = x; fx->y = y; fx->z = z;
+            fx->total_time = duration;
+            fx->elapsed = 0.0f;
+            fx->color = col;
+            fx->radius = radius;
+            fx->spot_id = spot_id;
+            fx->yaw_degrees = yaw_degrees;
+            return;
+        }
+    }
+}
+
+static VisualProjectile* spawn_projectile(ViewerState* v,
+                                          float sx, float sy, float sz,
+                                          float dx, float dy, float dz,
+                                          float travel_secs, Color col,
+                                          float radius, uint32_t spot_id,
+                                          uint32_t launch_spot_id,
+                                          uint32_t impact_spot_id) {
+    if (!v || (spot_id == 0 && launch_spot_id == 0 && impact_spot_id == 0))
+        return NULL;
     for (int i = 0; i < MAX_PROJECTILES; i++) {
         if (!v->projectiles[i].active) {
             VisualProjectile* vp = &v->projectiles[i];
+            free_projectile(vp);
             vp->active = 1;
             vp->src_x = sx; vp->src_y = sy; vp->src_z = sz;
             vp->dst_x = dx; vp->dst_y = dy; vp->dst_z = dz;
             vp->total_time = travel_secs; vp->elapsed = 0;
             vp->color = col; vp->radius = radius;
             vp->spot_id = spot_id;
-            return;
+            vp->launch_spot_id = launch_spot_id;
+            vp->impact_spot_id = impact_spot_id;
+            return vp;
         }
     }
+    return NULL;
+}
+
+static void apply_projectile_profile(VisualProjectile* vp,
+                                     float client_start_time,
+                                     float client_end_time,
+                                     float projectile_angle,
+                                     float projectile_progress) {
+    if (!vp || client_end_time <= client_start_time) return;
+    vp->profiled = 1;
+    vp->client_start_time = client_start_time;
+    vp->client_end_time = client_end_time;
+    vp->projectile_angle = projectile_angle;
+    vp->projectile_progress = projectile_progress;
 }
 
 static void spawn_hitsplat(ViewerState* v, float wx, float wy, float wz, int damage_tenths) {
@@ -647,53 +1314,41 @@ static void spawn_hitsplat(ViewerState* v, float wx, float wy, float wz, int dam
  * We keep original cache colors (dark base) without modification. */
 static TerrainMesh* load_terrain(ViewerState* v) {
     (void)v;
-    for (int i = 0; TERRAIN_PATHS[i]; i++) {
-        if (!FileExists(TERRAIN_PATHS[i])) continue;
-        TerrainMesh* tm = terrain_load(TERRAIN_PATHS[i]);
-        if (tm && tm->loaded) {
-            terrain_offset(tm, FC_WORLD_ORIGIN_X, FC_WORLD_ORIGIN_Y);
-            return tm;
-        }
+    TerrainMesh* tm = terrain_load("fightcaves.terrain");
+    if (tm && tm->loaded) {
+        terrain_offset(tm, FC_WORLD_ORIGIN_X, FC_WORLD_ORIGIN_Y);
+        return tm;
     }
     return NULL;
 }
 
 /* Load collision map for use during object height compression */
 static int load_collision_for_objects(uint8_t coll[64][64]) {
-    const char* paths[] = {
-        "fc-core/assets/fightcaves.collision",
-        "../fc-core/assets/fightcaves.collision",
-        "../../fc-core/assets/fightcaves.collision",
-        "assets/fightcaves.collision", NULL };
-    for (int i = 0; paths[i]; i++) {
-        FILE* f = fopen(paths[i], "rb");
-        if (!f) continue;
-        uint8_t buf[64*64];
-        size_t n = fread(buf, 1, sizeof(buf), f);
+    FILE* f = fc_repo_fopen("fc-core/assets/fightcaves.collision", "rb");
+    uint8_t buf[64*64];
+    if (!f) return 0;
+    if (!fc_read_exact(f, buf, 1, sizeof(buf),
+                       "fc-core/assets/fightcaves.collision", "collision map")) {
         fclose(f);
-        if (n == sizeof(buf)) {
-            for (int y = 0; y < 64; y++)
-                for (int x = 0; x < 64; x++)
-                    coll[x][y] = buf[y * 64 + x];
-            return 1;
-        }
+        return 0;
     }
-    return 0;
+    fclose(f);
+    for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+            coll[x][y] = buf[y * 64 + x];
+    return 1;
 }
 
 /* Objects loader — no modifications */
 static ObjectMesh* load_objects_with_terrain(TerrainMesh* tm) {
     (void)tm;
-    for (int i = 0; OBJECTS_PATHS[i]; i++) {
-        if (!FileExists(OBJECTS_PATHS[i])) continue;
-        ObjectMesh* om = objects_load(OBJECTS_PATHS[i]);
-        if (om && om->loaded) {
-            objects_offset(om, FC_WORLD_ORIGIN_X, FC_WORLD_ORIGIN_Y);
+    ObjectMesh* om = objects_load("fightcaves.objects");
+    if (om && om->loaded) {
+        objects_offset(om, FC_WORLD_ORIGIN_X, FC_WORLD_ORIGIN_Y);
 
-            /* No modifications to objects mesh — original cache data */
+        /* No modifications to objects mesh — original cache data */
 
-            return om;
-        }
+        return om;
     }
     return NULL;
 }
@@ -747,10 +1402,11 @@ static int find_clicked_npc_idx(ViewerState* v, int tile_x, int tile_y) {
 
 /* Called EVERY FRAME to capture clicks (which only fire once at 60fps).
  * Sets routes and targets on the player struct directly. */
-static void process_human_clicks(ViewerState* v) {
+static void process_human_clicks(ViewerState* v, int ui_capture) {
     FcPlayer* p = &v->state.player;
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (ui_capture) return;
         Vector2 mpos = GetMousePosition();
         if (mpos.x < FC_ARENA_WIDTH * TILE_SIZE) {
             int tx, ty;
@@ -1085,6 +1741,42 @@ static Vector3 camera_follow_target(const ViewerState* v) {
 /* Scene drawing                                                             */
 /* ======================================================================== */
 
+static int object_anim_row_visible(const ObjectAnimPlacement* row) {
+    if (!row) return 0;
+    return (row->flags & OANM_FLAG_DYNAMIC_REPLACEMENT) == 0;
+}
+
+static void draw_animated_objects(ViewerState* v) {
+    if (!v || !v->object_anims || !v->object_anims->loaded ||
+        !v->object_anim_models || !v->object_anim_runtimes)
+        return;
+
+    float dt = GetFrameTime();
+    rlDisableBackfaceCulling();
+    for (int i = 0; i < v->object_anims->count; i++) {
+        ObjectAnimPlacement* row = &v->object_anims->rows[i];
+        if (!object_anim_row_visible(row)) continue;
+
+        NpcModelEntry* entry = fc_npc_model_find(v->object_anim_models,
+                                                 row->model_id);
+        if (!entry || !entry->loaded) continue;
+
+        if (row->animation_id >= 0 && v->anim_cache) {
+            ObjectAnimRuntime* rt = &v->object_anim_runtimes[i];
+            update_entry_animation(entry, v->anim_cache, &rt->anim_state,
+                                   &rt->anim_seq, &rt->anim_frame,
+                                   &rt->anim_timer, row->animation_id, dt,
+                                   row->phase_ticks);
+        }
+
+        DrawModelEx(entry->model,
+                    (Vector3){row->pos_x, row->pos_y, row->pos_z},
+                    (Vector3){0, 1, 0}, 0.0f,
+                    (Vector3){1, 1, 1}, WHITE);
+    }
+    rlEnableBackfaceCulling();
+}
+
 static void draw_scene(ViewerState* v) {
     if (v->camera_locked) {
         v->camera.target = camera_follow_target(v);
@@ -1106,6 +1798,7 @@ static void draw_scene(ViewerState* v) {
         DrawModel(v->objects->model, (Vector3){0,0,0}, 1.0f, WHITE);
         rlEnableBackfaceCulling();
     }
+    draw_animated_objects(v);
 
     /* Grid overlay */
     if (v->show_grid) {
@@ -1150,8 +1843,7 @@ static void draw_scene(ViewerState* v) {
 
         if (e->entity_type == ENTITY_PLAYER) {
             /* Player model or fallback cylinder */
-            NpcModelEntry* pm = (v->player_model && v->player_model->count > 0)
-                ? &v->player_model->entries[0] : NULL;
+            NpcModelEntry* pm = viewer_player_model_entry(v);
             if (pm && pm->loaded) {
                 Vector3 pos = {ex, gy, ey};
                 /* Use the backend-computed facing angle (set per movement step or when targeting) */
@@ -1223,30 +1915,118 @@ static void draw_scene(ViewerState* v) {
         DrawCircle3D((Vector3){ex, 0.05f, ey}, r, (Vector3){1,0,0}, 90.0f, COL_TARGET);
     }
 
-    /* Draw active visual projectiles — use 3D model if available, sphere fallback */
+    /* Draw active visual projectiles — use cache-backed spotanim models when present. */
     for (int pi = 0; pi < MAX_PROJECTILES; pi++) {
         VisualProjectile* vp = &v->projectiles[pi];
         if (!vp->active) continue;
+        if (vp->spot_id == 0) continue;
         float t = (vp->total_time > 0) ? vp->elapsed / vp->total_time : 1.0f;
         if (t > 1.0f) t = 1.0f;
         float px = vp->src_x + (vp->dst_x - vp->src_x) * t;
-        float py = vp->src_y + (vp->dst_y - vp->src_y) * t + sinf(t * 3.14159f) * 1.5f;
+        float py = vp->src_y + (vp->dst_y - vp->src_y) * t;
         float pz = vp->src_z + (vp->dst_z - vp->src_z) * t;
 
-        /* Try to render actual projectile model */
-        NpcModelEntry* pm = (vp->spot_id > 0 && v->projectile_models)
-            ? fc_npc_model_find(v->projectile_models, vp->spot_id) : NULL;
+        if (vp->profiled) {
+            float client_time = t * (vp->client_end_time + 1.0f);
+            if (client_time < vp->client_start_time)
+                continue;
+
+            float sx = vp->src_x;
+            float sy = vp->src_y;
+            float sz = vp->src_z;
+            float dx = vp->dst_x - sx;
+            float dz = vp->dst_z - sz;
+            float horizontal = sqrtf(dx * dx + dz * dz);
+            float dir_x = 0.0f;
+            float dir_z = 1.0f;
+            if (horizontal > 0.00001f) {
+                dir_x = dx / horizontal;
+                dir_z = dz / horizontal;
+            }
+
+            float start_pos = vp->projectile_progress >= 0.0f
+                ? vp->projectile_progress / 128.0f : 0.0f;
+            sx += dir_x * start_pos;
+            sz += dir_z * start_pos;
+
+            float travel_time = vp->client_end_time + 1.0f -
+                                vp->client_start_time;
+            if (travel_time < 1.0f) travel_time = 1.0f;
+            float client_t = client_time - vp->client_start_time;
+            if (client_t < 0.0f) client_t = 0.0f;
+            if (client_t > travel_time) client_t = travel_time;
+
+            float speed_x = (vp->dst_x - sx) / travel_time;
+            float speed_z = (vp->dst_z - sz) / travel_time;
+            float horizontal_speed = sqrtf(speed_x * speed_x +
+                                           speed_z * speed_z);
+            float slope = vp->projectile_angle >= 0.0f
+                ? vp->projectile_angle : 15.0f;
+            float speed_y = horizontal_speed *
+                tanf(slope * (3.14159265f / 128.0f));
+            float accel_y = 2.0f * (vp->dst_y - sy -
+                                    speed_y * travel_time) /
+                            (travel_time * travel_time);
+
+            px = sx + speed_x * client_t;
+            py = sy + speed_y * client_t +
+                 0.5f * accel_y * client_t * client_t;
+            pz = sz + speed_z * client_t;
+        }
+
+        const SpotAnimDef* spot = NULL;
+        NpcModelEntry* pm = projectile_model_for_spot(v, vp->spot_id, &spot);
         if (pm && pm->loaded) {
             /* Rotate projectile to face travel direction */
             float ddx = vp->dst_x - vp->src_x;
             float ddz = vp->dst_z - vp->src_z;
             float angle = atan2f(ddx, ddz) * (180.0f / 3.14159f);
+            float scale_xy = (spot && spot->resize_xy > 0)
+                ? (float)spot->resize_xy / 128.0f : 1.0f;
+            float scale_z = (spot && spot->resize_z > 0)
+                ? (float)spot->resize_z / 128.0f : 1.0f;
+            if (spot) angle += (float)spot->rotation;
+            if (spot && spot->animation_id >= 0) {
+                update_entry_animation(pm, v->anim_cache, &vp->anim_state,
+                                       &vp->anim_seq, &vp->anim_frame,
+                                       &vp->anim_timer, spot->animation_id,
+                                       GetFrameTime(), 0.0f);
+            }
             rlDisableBackfaceCulling();
             DrawModelEx(pm->model, (Vector3){px, py, pz},
-                        (Vector3){0,1,0}, angle, (Vector3){1,1,1}, WHITE);
+                        (Vector3){0,1,0}, angle,
+                        (Vector3){scale_xy, scale_z, scale_xy}, WHITE);
+            rlEnableBackfaceCulling();
+        } else if (vp->radius > 0.0f) {
+            DrawSphere((Vector3){px, py, pz}, vp->radius, vp->color);
+        }
+    }
+
+    for (int ei = 0; ei < MAX_VISUAL_EFFECTS; ei++) {
+        VisualEffect* fx = &v->effects[ei];
+        if (!fx->active) continue;
+        const SpotAnimDef* spot = NULL;
+        NpcModelEntry* pm = projectile_model_for_spot(v, fx->spot_id, &spot);
+        if (pm && pm->loaded) {
+            float scale_xy = (spot && spot->resize_xy > 0)
+                ? (float)spot->resize_xy / 128.0f : 1.0f;
+            float scale_z = (spot && spot->resize_z > 0)
+                ? (float)spot->resize_z / 128.0f : 1.0f;
+            if (spot && spot->animation_id >= 0) {
+                update_entry_animation(pm, v->anim_cache, &fx->anim_state,
+                                       &fx->anim_seq, &fx->anim_frame,
+                                       &fx->anim_timer, spot->animation_id,
+                                       GetFrameTime(), 0.0f);
+            }
+            rlDisableBackfaceCulling();
+            DrawModelEx(pm->model, (Vector3){fx->x, fx->y, fx->z},
+                        (Vector3){0,1,0},
+                        fx->yaw_degrees + (spot ? (float)spot->rotation : 0.0f),
+                        (Vector3){scale_xy, scale_z, scale_xy}, WHITE);
             rlEnableBackfaceCulling();
         } else {
-            DrawSphere((Vector3){px, py, pz}, vp->radius, vp->color);
+            DrawSphere((Vector3){fx->x, fx->y, fx->z},
+                       fx->radius, fx->color);
         }
     }
 
@@ -1362,6 +2142,580 @@ static void draw_header(ViewerState* v) {
     snprintf(b,sizeof(b),"HP %d/%d  Pray %d/%d",
         p->current_hp/10, p->max_hp/10, p->current_prayer/10, p->max_prayer/10);
     text_s(b,WINDOW_W-MeasureText(b,14)-10,8,14,COL_TEXT_WHITE);
+}
+
+static Rectangle runec_side_content_rect(const ViewerState* v) {
+    int screen_w = GetScreenWidth();
+    int screen_h = GetScreenHeight();
+    if (v && v->ui.decoded_ui_enabled && v->ui.decoded_ui_ready) {
+        Rectangle screen = {0, 0, (float)screen_w, (float)screen_h};
+        Rectangle rect = {0};
+        if (runec_ui_interfaces_component_rect_by_id(
+                &v->ui.interfaces, "toplevel_osrs_stretch",
+                VIEWER_RUNEC_TOP_SIDE_CONTAINER, screen, &rect)) {
+            return rect;
+        }
+    }
+
+    Rectangle side = {
+        (float)screen_w - RUNEC_OSRS_SIDE_MENU_W,
+        (float)screen_h - RUNEC_OSRS_SIDE_MENU_H,
+        RUNEC_OSRS_SIDE_MENU_W,
+        RUNEC_OSRS_SIDE_MENU_H
+    };
+    return (Rectangle){
+        side.x + RUNEC_OSRS_SIDE_CONTENT_X,
+        side.y + RUNEC_OSRS_SIDE_CONTENT_Y,
+        RUNEC_OSRS_SIDE_CONTENT_W,
+        RUNEC_OSRS_SIDE_CONTENT_H
+    };
+}
+
+static void draw_runec_debug_friends_tab(ViewerState* v, Rectangle content) {
+    BeginScissorMode((int)content.x, (int)content.y,
+                     (int)content.width, (int)content.height);
+
+    int px = (int)content.x;
+    int x = px + 4;
+    int by = (int)content.y + 3;
+    int pw = (int)content.width;
+    char b[160];
+    char speed_label[32];
+    format_speed_label(v, speed_label, sizeof(speed_label));
+
+    snprintf(b, sizeof(b), "%s %s  Wave %d  Tick %d",
+             v->paused ? "PAUSED" : "RUN", speed_label,
+             v->state.current_wave, v->state.tick);
+    DrawText(b, x, by, 8, COL_TEXT_YELLOW); by += 10;
+    snprintf(b, sizeof(b), "P:(%d,%d) Ent:%d Hash:%08x",
+             v->state.player.x, v->state.player.y,
+             v->entity_count, v->last_hash);
+    DrawText(b, x, by, 8, COL_TEXT_DIM); by += 10;
+    snprintf(b, sizeof(b), "Dmg +%d/-%d Kills:%d%s",
+             v->state.damage_dealt_this_tick / 10,
+             v->state.damage_taken_this_tick / 10,
+             v->state.npcs_killed_this_tick,
+             v->godmode ? " GOD" : "");
+    DrawText(b, x, by, 8, v->godmode ? COL_TEXT_YELLOW : COL_TEXT_DIM);
+    by += 12;
+
+    if (v->dbg_flags) {
+        v->dbg_tab_y = by;
+        dbg_draw_panel_tabs(&v->state, &v->reward_params,
+                            &v->reward_breakdown, &v->reward_runtime,
+                            v->reward_config_loaded,
+                            v->reward_config_path,
+                            px, x, by, pw, v->dbg_tab);
+    } else {
+        v->dbg_tab_y = 0;
+        DrawLine(px + 4, by, px + pw - 4, by, COL_PANEL_BORDER);
+        by += 10;
+        DrawText("Debug overlay off", x, by, 9, COL_TEXT_DIM);
+    }
+
+    EndScissorMode();
+}
+
+#define CLAN_NPC_MAX_ROWS 8
+#define CLAN_NPC_ROW_H 18
+#define CLAN_SPEED_BTN_COLS 4
+#define CLAN_SPEED_BTN_H 16
+#define CLAN_SPEED_BTN_GAP 4
+#define CLAN_SPEED_BOX_PAD 5
+#define CLAN_SPEED_LABEL_H 16
+
+static int clan_visible_npc_count(const ViewerState* v) {
+    if (!v) return 0;
+    int shown = 0;
+    for (int ni = 0; ni < FC_MAX_NPCS && shown < CLAN_NPC_MAX_ROWS; ni++) {
+        const FcNpc* n = &v->state.npcs[ni];
+        if (!n->active || n->is_dead)
+            continue;
+        shown++;
+    }
+    return shown;
+}
+
+static Rectangle clan_wave_button_rect(const ViewerState* v, Rectangle content) {
+    int shown = clan_visible_npc_count(v);
+    int y = (int)content.y + 4 + 16;
+    y += shown > 0 ? shown * CLAN_NPC_ROW_H : 16;
+    y += 7;
+    int btn_rows = (NUM_MANUAL_TPS_PRESETS + CLAN_SPEED_BTN_COLS - 1) /
+        CLAN_SPEED_BTN_COLS;
+    int speed_box_h = CLAN_SPEED_BOX_PAD * 2 + CLAN_SPEED_LABEL_H +
+        btn_rows * CLAN_SPEED_BTN_H + (btn_rows - 1) * CLAN_SPEED_BTN_GAP;
+    int max_y = (int)(content.y + content.height) - 22 - 6 - speed_box_h;
+    if (y > max_y) y = max_y;
+    if (y < (int)content.y + 22) y = (int)content.y + 22;
+    return (Rectangle){content.x + 4.0f, (float)y, content.width - 8.0f, 20.0f};
+}
+
+static Rectangle clan_speed_box_rect(const ViewerState* v, Rectangle content) {
+    Rectangle wave_btn = clan_wave_button_rect(v, content);
+    int btn_rows = (NUM_MANUAL_TPS_PRESETS + CLAN_SPEED_BTN_COLS - 1) /
+        CLAN_SPEED_BTN_COLS;
+    int box_h = CLAN_SPEED_BOX_PAD * 2 + CLAN_SPEED_LABEL_H +
+        btn_rows * CLAN_SPEED_BTN_H + (btn_rows - 1) * CLAN_SPEED_BTN_GAP;
+    int y = (int)(wave_btn.y + wave_btn.height + 6.0f);
+    int max_y = (int)(content.y + content.height) - box_h - 2;
+    if (y > max_y) y = max_y;
+    if (y < (int)content.y + 2) y = (int)content.y + 2;
+    return (Rectangle){content.x + 4.0f, (float)y,
+                       content.width - 8.0f, (float)box_h};
+}
+
+static Rectangle clan_speed_button_rect(const ViewerState* v, Rectangle content,
+                                        int index) {
+    Rectangle box = clan_speed_box_rect(v, content);
+    int inner_x = (int)box.x + CLAN_SPEED_BOX_PAD;
+    int inner_w = (int)box.width - CLAN_SPEED_BOX_PAD * 2;
+    int btn_w = (inner_w - CLAN_SPEED_BTN_GAP *
+        (CLAN_SPEED_BTN_COLS - 1)) / CLAN_SPEED_BTN_COLS;
+    int row = index / CLAN_SPEED_BTN_COLS;
+    int col = index % CLAN_SPEED_BTN_COLS;
+    int x = inner_x + col * (btn_w + CLAN_SPEED_BTN_GAP);
+    int y = (int)box.y + CLAN_SPEED_BOX_PAD + CLAN_SPEED_LABEL_H +
+        row * (CLAN_SPEED_BTN_H + CLAN_SPEED_BTN_GAP);
+    return (Rectangle){(float)x, (float)y, (float)btn_w,
+                       (float)CLAN_SPEED_BTN_H};
+}
+
+static int clan_wave_dropdown_visible_count(Rectangle content, Rectangle button) {
+    int item_h = 14;
+    int available = (int)(button.y - content.y - 5);
+    int visible = available / item_h;
+    if (visible < 4) visible = 4;
+    if (visible > 14) visible = 14;
+    if (visible > FC_NUM_WAVES) visible = FC_NUM_WAVES;
+    return visible;
+}
+
+static Rectangle clan_wave_dropdown_rect(Rectangle content, Rectangle button,
+                                         int visible) {
+    int item_h = 14;
+    int h = visible * item_h;
+    int y = (int)button.y - h;
+    if (y < (int)content.y + 2)
+        y = (int)content.y + 2;
+    return (Rectangle){button.x, (float)y, button.width, (float)h};
+}
+
+static void clamp_clan_wave_scroll(ViewerState* v, int visible) {
+    if (!v) return;
+    int max_scroll = FC_NUM_WAVES - visible;
+    if (max_scroll < 0) max_scroll = 0;
+    if (v->clan_wave_scroll < 0) v->clan_wave_scroll = 0;
+    if (v->clan_wave_scroll > max_scroll) v->clan_wave_scroll = max_scroll;
+}
+
+static Rectangle runec_legacy_prayer_button_rect(Rectangle content, int index) {
+    const int btn_h = 34;
+    const int gap = 3;
+    int x = (int)content.x + 8;
+    int y = (int)content.y + 8 + 34 + index * (btn_h + gap);
+    int w = (int)content.width - 16;
+    if (w < 120) w = 120;
+    return (Rectangle){(float)x, (float)y, (float)w, (float)btn_h};
+}
+
+static void draw_runec_legacy_prayer_tab(ViewerState* v, Rectangle content) {
+    BeginScissorMode((int)content.x, (int)content.y,
+                     (int)content.width, (int)content.height);
+
+    DrawRectangleRec(content, COL_PANEL);
+
+    FcPlayer* p = &v->state.player;
+    int x = (int)content.x + 8;
+    int by = (int)content.y + 8;
+    int right = (int)(content.x + content.width) - 4;
+    char b[64];
+
+    snprintf(b, sizeof(b), "Prayer: %d / %d",
+             p->current_prayer / 10, p->max_prayer / 10);
+    text_s(b, x, by, 10, COL_PRAY_BLUE);
+    by += 16;
+
+    if (p->prayer != PRAYER_NONE) {
+        int resistance = 60 + 2 * p->prayer_bonus;
+        snprintf(b, sizeof(b), "Drain rate: 12 / %d resist", resistance);
+        text_s(b, x, by, 8, COL_TEXT_DIM);
+    } else {
+        text_s("No prayer active", x, by, 8, COL_TEXT_DIM);
+    }
+    by += 14;
+
+    DrawLine((int)content.x + 4, by - 2, right, by - 2, COL_PANEL_BORDER);
+
+    static const char* pray_names[] = {
+        "Prot. Melee", "Prot. Range", "Prot. Magic"
+    };
+    static const int pray_vals[] = {
+        PRAYER_PROTECT_MELEE, PRAYER_PROTECT_RANGE, PRAYER_PROTECT_MAGIC
+    };
+    Color pray_colors[] = { COL_TEXT_YELLOW, COL_TEXT_GREEN, COL_PRAY_BLUE };
+    Texture2D tex_on[] = {
+        v->tex_pray_melee_on, v->tex_pray_range_on, v->tex_pray_magic_on
+    };
+    Texture2D tex_off[] = {
+        v->tex_pray_melee_off, v->tex_pray_range_off, v->tex_pray_magic_off
+    };
+
+    int no_points = (p->current_prayer <= 0);
+    Vector2 mouse = GetMousePosition();
+    const Color slot_empty = CLITERAL(Color){30, 26, 20, 255};
+    const Color pray_active = CLITERAL(Color){60, 120, 200, 200};
+    const Color tab_hover = CLITERAL(Color){72, 63, 51, 255};
+    const Color pray_button = CLITERAL(Color){50, 44, 36, 255};
+    for (int i = 0; i < 3; i++) {
+        Rectangle br = runec_legacy_prayer_button_rect(content, i);
+        int is_active = (p->prayer == pray_vals[i]);
+        int hovered = CheckCollisionPointRec(mouse, br);
+
+        Color bg;
+        if (no_points) {
+            bg = slot_empty;
+        } else if (is_active) {
+            bg = pray_active;
+        } else if (hovered) {
+            bg = tab_hover;
+        } else {
+            bg = pray_button;
+        }
+        DrawRectangleRec(br, bg);
+        DrawRectangleLinesEx(br, is_active ? 2 : 1,
+                             is_active ? pray_colors[i] : COL_PANEL_BORDER);
+
+        Texture2D icon = is_active ? tex_on[i] : tex_off[i];
+        Color icon_tint = no_points ? CLITERAL(Color){80,80,80,255} : WHITE;
+        draw_tex_fit(icon, (int)br.x + 4, (int)br.y + 2, 30, 30, icon_tint);
+
+        Color tc = no_points ? COL_TEXT_DIM
+            : (is_active ? COL_TEXT_WHITE : pray_colors[i]);
+        text_s(pray_names[i], (int)br.x + 38, (int)br.y + 7, 10, tc);
+
+        snprintf(b, sizeof(b), "[%d]", i + 1);
+        text_s(b, (int)br.x + 38, (int)br.y + 21, 8, COL_TEXT_DIM);
+        if (is_active) {
+            text_s("ACTIVE", (int)(br.x + br.width) - 44,
+                   (int)br.y + 21, 8, COL_TEXT_WHITE);
+        }
+    }
+
+    by = (int)runec_legacy_prayer_button_rect(content, 2).y + 34 + 9;
+    snprintf(b, sizeof(b), "Prayer bonus: +%d", p->prayer_bonus);
+    text_s(b, x, by, 8, COL_TEXT_DIM);
+
+    EndScissorMode();
+}
+
+static void draw_runec_clan_npc_tab(ViewerState* v, Rectangle content) {
+    BeginScissorMode((int)content.x, (int)content.y,
+                     (int)content.width, (int)content.height);
+
+    int x = (int)content.x + 4;
+    int by = (int)content.y + 4;
+    int row_h = CLAN_NPC_ROW_H;
+    int bar_x = x + 66;
+    int bar_w = (int)content.width - 92;
+    char b[128];
+    static const char* NPC_SHORT[] = {"?","Tz-Kih","Tz-Kek","Kek-Sm","Tok-Xil",
+        "MejKot","Ket-Zek","Jad","HurKot"};
+
+    v->panel_npc_count = 0;
+    DrawText("NPC Targets", x, by, 10, COL_TEXT_YELLOW);
+    by += 16;
+    DrawLine((int)content.x + 3, by - 3,
+             (int)(content.x + content.width - 3), by - 3, COL_PANEL_BORDER);
+
+    int shown = 0;
+    Vector2 mouse = GetMousePosition();
+    for (int ni = 0; ni < FC_MAX_NPCS && shown < CLAN_NPC_MAX_ROWS; ni++) {
+        FcNpc* n = &v->state.npcs[ni];
+        if (!n->active || n->is_dead)
+            continue;
+
+        Rectangle row = {
+            content.x + 2,
+            (float)by - 2,
+            content.width - 4,
+            (float)row_h
+        };
+        int hovered = CheckCollisionPointRec(mouse, row);
+        int is_target = (ni == v->state.player.attack_target_idx);
+        if (hovered || is_target) {
+            DrawRectangleRec(row, is_target
+                ? CLITERAL(Color){82,73,61,190}
+                : CLITERAL(Color){52,45,35,180});
+        }
+
+        if (v->panel_npc_count < 8) {
+            v->panel_npc_slot[v->panel_npc_count] = ni;
+            v->panel_npc_y[v->panel_npc_count] = by - 2;
+            v->panel_npc_count++;
+        }
+
+        const char* nname = (n->npc_type > 0 && n->npc_type < 9) ? NPC_SHORT[n->npc_type] : "?";
+        if (is_target)
+            DrawText(">", x, by + 1, 9, COL_TEXT_YELLOW);
+        snprintf(b, sizeof(b), "%s[%d]", nname, ni);
+        DrawText(b, x + 10, by, 8, is_target ? COL_TEXT_YELLOW : COL_TEXT_WHITE);
+
+        float hp_frac = (n->max_hp > 0) ? (float)n->current_hp / (float)n->max_hp : 0.0f;
+        if (hp_frac < 0.0f) hp_frac = 0.0f;
+        if (hp_frac > 1.0f) hp_frac = 1.0f;
+        DrawRectangle(bar_x, by + 1, bar_w, 7, COL_HP_RED);
+        DrawRectangle(bar_x, by + 1, (int)((float)bar_w * hp_frac), 7, COL_HP_GREEN);
+        snprintf(b, sizeof(b), "%d", n->current_hp / 10);
+        DrawText(b, bar_x + bar_w + 3, by, 8, COL_TEXT_DIM);
+
+        int dist = fc_distance_to_npc(v->state.player.x, v->state.player.y, n);
+        snprintf(b, sizeof(b), "dist:%d atk:%d", dist, n->attack_timer);
+        DrawText(b, x + 10, by + 10, 7, COL_TEXT_DIM);
+
+        by += row_h;
+        shown++;
+    }
+
+    if (shown == 0) {
+        DrawText("No NPCs alive", x, by, 9, COL_TEXT_DIM);
+        by += 16;
+    }
+
+    Rectangle wave_btn = clan_wave_button_rect(v, content);
+    DrawLine((int)content.x + 3, (int)wave_btn.y - 5,
+             (int)(content.x + content.width - 3), (int)wave_btn.y - 5,
+             COL_PANEL_BORDER);
+    int btn_hover = CheckCollisionPointRec(mouse, wave_btn);
+    DrawRectangleRec(wave_btn, btn_hover
+        ? CLITERAL(Color){72,63,51,230}
+        : CLITERAL(Color){42,36,28,220});
+    DrawRectangleLinesEx(wave_btn, 1, COL_PANEL_BORDER);
+    snprintf(b, sizeof(b), "Jump to Wave: %d", v->state.current_wave);
+    DrawText(b, (int)wave_btn.x + 6, (int)wave_btn.y + 5, 9, COL_TEXT_YELLOW);
+    DrawText(v->clan_wave_dropdown_open ? "^" : "v",
+             (int)(wave_btn.x + wave_btn.width) - 16,
+             (int)wave_btn.y + 5, 9, COL_TEXT_DIM);
+
+    if (v->clan_wave_dropdown_open) {
+        int item_h = 14;
+        int visible = clan_wave_dropdown_visible_count(content, wave_btn);
+        clamp_clan_wave_scroll(v, visible);
+        Rectangle list = clan_wave_dropdown_rect(content, wave_btn, visible);
+        DrawRectangleRec(list, CLITERAL(Color){20,18,14,245});
+        DrawRectangleLinesEx(list, 1, COL_PANEL_BORDER);
+        for (int i = 0; i < visible; i++) {
+            int wave = v->clan_wave_scroll + i + 1;
+            if (wave > FC_NUM_WAVES)
+                break;
+            Rectangle row = {
+                list.x + 1.0f,
+                list.y + (float)(i * item_h),
+                list.width - 2.0f,
+                (float)item_h
+            };
+            int hover = CheckCollisionPointRec(mouse, row);
+            int current = (wave == v->state.current_wave);
+            if (current)
+                DrawRectangleRec(row, CLITERAL(Color){60,80,40,245});
+            else if (hover)
+                DrawRectangleRec(row, CLITERAL(Color){72,63,51,230});
+            snprintf(b, sizeof(b), "Wave %d", wave);
+            DrawText(b, (int)row.x + 5, (int)row.y + 2, 9,
+                     current ? COL_TEXT_YELLOW : COL_TEXT_WHITE);
+        }
+    }
+
+    Rectangle speed_box = clan_speed_box_rect(v, content);
+    DrawRectangleRec(speed_box, CLITERAL(Color){20, 18, 14, 220});
+    DrawRectangleLinesEx(speed_box, 1, COL_PANEL_BORDER);
+    DrawText(v->policy_pipe ? "Replay TPS" : "TPS Presets",
+             (int)speed_box.x + CLAN_SPEED_BOX_PAD,
+             (int)speed_box.y + 4, 9, COL_TEXT_DIM);
+
+    for (int i = 0; i < NUM_MANUAL_TPS_PRESETS; i++) {
+        Rectangle br = clan_speed_button_rect(v, content, i);
+        int hovered = CheckCollisionPointRec(mouse, br);
+        int selected = float_near(v->tps, MANUAL_TPS_PRESETS[i]);
+        Color bg = selected ? CLITERAL(Color){82,73,61,255}
+            : (hovered ? CLITERAL(Color){72,63,51,255}
+                       : CLITERAL(Color){52,45,35,255});
+        Color tc = selected ? COL_TEXT_YELLOW : COL_TEXT_WHITE;
+
+        DrawRectangleRec(br, bg);
+        DrawRectangleLinesEx(br, 1, COL_PANEL_BORDER);
+        DrawText(MANUAL_TPS_LABELS[i],
+                 (int)br.x + ((int)br.width -
+                     MeasureText(MANUAL_TPS_LABELS[i], 9)) / 2,
+                 (int)br.y + 4, 9, tc);
+    }
+
+    EndScissorMode();
+}
+
+static void draw_runec_debug_tabs(ViewerState* v) {
+    Rectangle content = runec_side_content_rect(v);
+    if (v->ui.active_tab == RUNEC_UI_TAB_FRIENDS) {
+        draw_runec_debug_friends_tab(v, content);
+    } else if (v->ui.active_tab == RUNEC_UI_TAB_CLAN_CHAT) {
+        draw_runec_clan_npc_tab(v, content);
+    } else if (v->ui.active_tab == RUNEC_UI_TAB_PRAYER) {
+        v->panel_npc_count = 0;
+        v->dbg_tab_y = 0;
+        draw_runec_legacy_prayer_tab(v, content);
+    } else {
+        v->panel_npc_count = 0;
+        v->dbg_tab_y = 0;
+    }
+}
+
+static int process_runec_debug_tab_clicks(ViewerState* v) {
+    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        return 0;
+
+    Vector2 mouse = GetMousePosition();
+    Rectangle content = runec_side_content_rect(v);
+    if (!CheckCollisionPointRec(mouse, content))
+        return 0;
+
+    if (v->ui.active_tab == RUNEC_UI_TAB_FRIENDS) {
+        if (v->dbg_flags && v->dbg_tab_y > 0) {
+            int px = (int)content.x;
+            int dtab_w = ((int)content.width - 12) / 5;
+            int dtab_h = 16;
+            int dtab_y = v->dbg_tab_y + 2;
+            for (int t = 0; t < 5; t++) {
+                int tx = px + 4 + t * dtab_w;
+                if (mouse.x >= tx && mouse.x < tx + dtab_w &&
+                    mouse.y >= dtab_y && mouse.y < dtab_y + dtab_h) {
+                    v->dbg_tab = t;
+                    return 1;
+                }
+            }
+        }
+        return 1;
+    }
+
+    if (v->ui.active_tab == RUNEC_UI_TAB_CLAN_CHAT) {
+        FcPlayer* p = &v->state.player;
+
+        Rectangle wave_btn = clan_wave_button_rect(v, content);
+        int visible = clan_wave_dropdown_visible_count(content, wave_btn);
+        Rectangle wave_list = clan_wave_dropdown_rect(content, wave_btn, visible);
+        clamp_clan_wave_scroll(v, visible);
+
+        if (v->clan_wave_dropdown_open && CheckCollisionPointRec(mouse, wave_list)) {
+            int item_h = 14;
+            int row = (int)((mouse.y - wave_list.y) / (float)item_h);
+            int wave = v->clan_wave_scroll + row + 1;
+            if (wave >= 1 && wave <= FC_NUM_WAVES) {
+                viewer_jump_to_wave(v, wave);
+                v->clan_wave_dropdown_open = 0;
+            }
+            return 1;
+        }
+
+        if (CheckCollisionPointRec(mouse, wave_btn)) {
+            v->clan_wave_dropdown_open = !v->clan_wave_dropdown_open;
+            v->clan_wave_scroll = v->state.current_wave - visible / 2 - 1;
+            clamp_clan_wave_scroll(v, visible);
+            return 1;
+        }
+
+        for (int i = 0; i < NUM_MANUAL_TPS_PRESETS; i++) {
+            Rectangle br = clan_speed_button_rect(v, content, i);
+            if (!CheckCollisionPointRec(mouse, br))
+                continue;
+            set_manual_speed(v, MANUAL_TPS_PRESETS[i]);
+            v->clan_wave_dropdown_open = 0;
+            return 1;
+        }
+
+        int by = (int)content.y + 4 + 16;
+        int shown = 0;
+        for (int ni = 0; ni < FC_MAX_NPCS && shown < CLAN_NPC_MAX_ROWS; ni++) {
+            FcNpc* n = &v->state.npcs[ni];
+            if (!n->active || n->is_dead)
+                continue;
+            Rectangle row = {
+                content.x + 2.0f,
+                (float)by - 2.0f,
+                content.width - 4.0f,
+                (float)CLAN_NPC_ROW_H
+            };
+            if (CheckCollisionPointRec(mouse, row)) {
+                p->attack_target_idx = ni;
+                p->approach_target = 1;
+                p->route_len = 0;
+                p->route_idx = 0;
+                fprintf(stderr, "CLAN TAB CLICK -> ATTACK npc_idx=%d\n", ni);
+                return 1;
+            }
+            by += CLAN_NPC_ROW_H;
+            shown++;
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+static int process_runec_clan_wave_scroll(ViewerState* v) {
+    if (!v || v->ui.active_tab != RUNEC_UI_TAB_CLAN_CHAT ||
+        !v->clan_wave_dropdown_open)
+        return 0;
+
+    Rectangle content = runec_side_content_rect(v);
+    Vector2 mouse = GetMousePosition();
+    Rectangle wave_btn = clan_wave_button_rect(v, content);
+    int visible = clan_wave_dropdown_visible_count(content, wave_btn);
+    Rectangle wave_list = clan_wave_dropdown_rect(content, wave_btn, visible);
+    if (!CheckCollisionPointRec(mouse, wave_list))
+        return 0;
+
+    float wheel = GetMouseWheelMove();
+    if (wheel == 0.0f)
+        return 1;
+
+    v->clan_wave_scroll -= (int)wheel * 3;
+    clamp_clan_wave_scroll(v, visible);
+    return 1;
+}
+
+static int process_runec_prayer_click(ViewerState* v) {
+    if (!v || v->ui.active_tab != RUNEC_UI_TAB_PRAYER)
+        return 0;
+    int left_click = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    int right_click = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+    if (!left_click && !right_click)
+        return 0;
+
+    Rectangle content = runec_side_content_rect(v);
+    Vector2 mouse = GetMousePosition();
+    if (!CheckCollisionPointRec(mouse, content))
+        return 0;
+
+    if (right_click)
+        return 1;
+
+    static const struct {
+        int prayer;
+        int action;
+    } buttons[] = {
+        {PRAYER_PROTECT_MELEE, FC_PRAYER_MELEE},
+        {PRAYER_PROTECT_RANGE, FC_PRAYER_RANGE},
+        {PRAYER_PROTECT_MAGIC, FC_PRAYER_MAGIC},
+    };
+
+    for (int i = 0; i < (int)(sizeof(buttons) / sizeof(buttons[0])); i++) {
+        Rectangle r = runec_legacy_prayer_button_rect(content, i);
+        if (!CheckCollisionPointRec(mouse, r))
+            continue;
+        queue_viewer_prayer_button(v, buttons[i].prayer, buttons[i].action);
+        return 1;
+    }
+
+    return 1;
 }
 
 /* ======================================================================== */
@@ -1482,9 +2836,11 @@ static int draw_inventory_tab(ViewerState* v, int px, int x, int by) {
 static int draw_combat_tab(ViewerState* v, int px, int x, int by) {
     FcPlayer* p = &v->state.player;
     char b[128];
+    const char* weapon_name = p->weapon_kind == FC_WEAPON_TWISTED_BOW
+        ? "Twisted bow" : "Rune crossbow";
 
     /* Weapon */
-    text_s("Rune crossbow", x, by, 10, COL_TEXT_YELLOW); by += 16;
+    text_s(weapon_name, x, by, 10, COL_TEXT_YELLOW); by += 16;
     DrawLine(px+4, by-2, px+PANEL_WIDTH-4, by-2, COL_PANEL_BORDER);
 
     /* Attack styles — read from v->combat_style */
@@ -1519,7 +2875,7 @@ static int draw_combat_tab(ViewerState* v, int px, int x, int by) {
     int spd = (v->combat_style == 1) ? 5 : 6;  /* Rapid = 5 ticks, others = 6 */
     snprintf(b, sizeof(b), "Speed: %d ticks (%s)", spd, styles[v->combat_style]);
     text_s(b, x, by, 9, COL_TEXT_DIM); by += 12;
-    snprintf(b, sizeof(b), "Range: 7 tiles");
+    snprintf(b, sizeof(b), "Range: %d tiles", p->weapon_range);
     text_s(b, x, by, 9, COL_TEXT_DIM); by += 12;
     snprintf(b, sizeof(b), "Ammo: %d bolts", p->ammo_count);
     text_s(b, x, by, 9, COL_TEXT_WHITE); by += 16;
@@ -1996,7 +3352,7 @@ static void draw_panel(ViewerState* v) {
                     fc_fill_render_entities(&v->state, v->entities, &v->entity_count);
                     update_reward_breakdown(v);
                     memset(v->hitsplats, 0, sizeof(v->hitsplats));
-                    memset(v->projectiles, 0, sizeof(v->projectiles));
+                    clear_visuals(v);
                     v->attack_target = -1;
                     dbg_log_clear();
                     dropdown_open = 0;
@@ -2038,6 +3394,11 @@ static void draw_panel(ViewerState* v) {
                          cur ? COL_TEXT_YELLOW : COL_TEXT_WHITE);
                 if (ih && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                     v->active_loadout = li;
+                    if (v->player_anim_state) {
+                        anim_model_state_free(v->player_anim_state);
+                        v->player_anim_state = NULL;
+                    }
+                    recreate_player_anim_state(v, viewer_player_model_entry(v));
                     const FcLoadout* lo = &FC_LOADOUTS[li];
                     FcPlayer* p = &v->state.player;
                     p->max_hp = lo->max_hp; p->current_hp = lo->max_hp;
@@ -2053,8 +3414,7 @@ static void draw_panel(ViewerState* v) {
                     p->defence_crush = lo->def_crush; p->defence_magic = lo->def_magic;
                     p->defence_ranged = lo->def_ranged; p->prayer_bonus = lo->prayer_bonus;
                     p->ammo_count = lo->ammo;
-                    p->sharks_remaining = FC_MAX_SHARKS;
-                    p->prayer_doses_remaining = FC_MAX_PRAYER_DOSES;
+                    apply_initial_supplies(v);
                     v->reward_breakdown_tick = -1;
                     update_reward_breakdown(v);
                     loadout_open = 0;
@@ -2170,6 +3530,8 @@ int main(int argc, char** argv) {
 
     ViewerState v; memset(&v, 0, sizeof(v));
     fc_init(&v.state);
+    runec_ui_init(&v.ui);
+    load_fc_ui_item_icons(&v);
     v.paused = 1; v.tps = NORMAL_TPS; v.show_debug = 1; v.auto_mode = 0;
     v.active_loadout = FC_ACTIVE_LOADOUT;
     v.attack_target = -1;
@@ -2181,60 +3543,39 @@ int main(int argc, char** argv) {
 
     v.terrain = load_terrain(&v);
     v.objects = load_objects_with_terrain(v.terrain);
+    if (fc_asset_exists("fightcaves.oanim"))
+        v.object_anims = object_anims_load("fightcaves.oanim");
+    if (v.object_anims)
+        object_anims_offset(v.object_anims, FC_WORLD_ORIGIN_X, FC_WORLD_ORIGIN_Y);
+    if (fc_asset_exists("fightcaves.object_anim.models"))
+        v.object_anim_models = fc_npc_models_load("fightcaves.object_anim.models");
+    if (v.object_anims && v.object_anims->count > 0) {
+        v.object_anim_runtimes = (ObjectAnimRuntime*)calloc(
+            (size_t)v.object_anims->count, sizeof(*v.object_anim_runtimes));
+        if (v.object_anim_runtimes)
+            v.object_anim_runtime_count = v.object_anims->count;
+    }
     if (!v.terrain || !v.terrain->loaded) v.show_grid = 1;
 
     /* Load NPC models */
     {
-        const char* npc_paths[] = {
-            "demo-env/assets/fc_npcs.models",
-            "../demo-env/assets/fc_npcs.models",
-            "assets/fc_npcs.models", NULL };
-        for (int i = 0; npc_paths[i]; i++) {
-            if (FileExists(npc_paths[i])) {
-                v.npc_models = fc_npc_models_load(npc_paths[i]);
-                break;
-            }
-        }
+        if (fc_asset_exists("fc_npcs.models"))
+            v.npc_models = fc_npc_models_load("fc_npcs.models");
         if (!v.npc_models) fprintf(stderr, "warning: NPC models not found\n");
     }
 
     /* Load player model */
     {
-        const char* pm_paths[] = {
-            "demo-env/assets/fc_player.models",
-            "../demo-env/assets/fc_player.models",
-            "assets/fc_player.models", NULL };
-        for (int i = 0; pm_paths[i]; i++) {
-            if (FileExists(pm_paths[i])) {
-                v.player_model = fc_npc_models_load(pm_paths[i]);
-                break;
-            }
-        }
+        if (fc_asset_exists("fc_player.models"))
+            v.player_model = fc_npc_models_load("fc_player.models");
     }
 
     /* Load animations (combined NPC + player) */
     {
-        const char* anim_paths[] = {
-            "demo-env/assets/fc_all.anims",
-            "../demo-env/assets/fc_all.anims",
-            "assets/fc_all.anims", NULL };
-        for (int i = 0; anim_paths[i]; i++) {
-            if (FileExists(anim_paths[i])) {
-                v.anim_cache = anim_cache_load(anim_paths[i]);
-                break;
-            }
-        }
-        /* Create player animation state */
-        if (v.anim_cache && v.player_model && v.player_model->count > 0) {
-            NpcModelEntry* pm = &v.player_model->entries[0];
-            if (pm->loaded && pm->vertex_skins) {
-                v.player_anim_state = anim_model_state_create(
-                    pm->vertex_skins, pm->base_vert_count);
-                v.player_anim_seq = PLAYER_ANIM_IDLE;
-                fprintf(stderr, "Player animation state created (%d base verts)\n",
-                        pm->base_vert_count);
-            }
-        }
+        if (fc_asset_exists("fc_all.anims"))
+            v.anim_cache = anim_cache_load("fc_all.anims");
+        if (v.anim_cache)
+            recreate_player_anim_state(&v, viewer_player_model_entry(&v));
         /* Create NPC animation states */
         if (v.anim_cache && v.npc_models) {
             for (int i = 0; i < v.npc_models->count; i++) {
@@ -2254,74 +3595,60 @@ int main(int argc, char** argv) {
 
     /* Load projectile models */
     {
-        const char* proj_paths[] = {
-            "demo-env/assets/fc_projectiles.models",
-            "../demo-env/assets/fc_projectiles.models",
-            "assets/fc_projectiles.models", NULL };
-        for (int i = 0; proj_paths[i]; i++) {
-            if (FileExists(proj_paths[i])) {
-                v.projectile_models = fc_npc_models_load(proj_paths[i]);
-                break;
-            }
-        }
+        if (fc_asset_exists("fc_projectiles.models"))
+            v.projectile_models = fc_npc_models_load("fc_projectiles.models");
+    }
+
+    /* Load spotanim metadata for projectile model/scale lookup */
+    {
+        if (fc_asset_exists("fc_spotanims.bin"))
+            v.spotanims = spotanims_load("fc_spotanims.bin");
     }
 
     /* Load prayer overhead icon textures */
     {
-        int loaded = 0;
-        for (int i = 0; SPRITE_DIRS[i]; i++) {
-            char path[256];
-            snprintf(path, sizeof(path), "%spray_melee.png", SPRITE_DIRS[i]);
-            if (FileExists(path)) {
-                v.pray_melee_tex = LoadTexture(path);
-                snprintf(path, sizeof(path), "%spray_missiles.png", SPRITE_DIRS[i]);
-                v.pray_missiles_tex = LoadTexture(path);
-                snprintf(path, sizeof(path), "%spray_magic.png", SPRITE_DIRS[i]);
-                v.pray_magic_tex = LoadTexture(path);
-                fprintf(stderr, "Prayer icons loaded from %s\n", SPRITE_DIRS[i]);
-                loaded = 1;
-                break;
-            }
+        if (fc_asset_exists("data/sprites/ui/prayeron_14.png")) {
+            v.pray_melee_tex = fc_load_texture_asset("data/sprites/ui/prayeron_14.png");
+            v.pray_missiles_tex = fc_load_texture_asset("data/sprites/ui/prayeron_13.png");
+            v.pray_magic_tex = fc_load_texture_asset("data/sprites/ui/prayeron_12.png");
+            fprintf(stderr, "Prayer icons loaded from %s\n", fc_asset_root());
+        } else {
+            fprintf(stderr, "warning: prayer icons not found under asset root %s\n",
+                    fc_asset_root());
         }
-        if (!loaded)
-            fprintf(stderr, "warning: prayer icons not found in any known sprite directory\n");
     }
 
     /* Load tab/inventory sprites (Phase 8h) */
     {
-        int loaded = 0;
-        for (int i = 0; SPRITE_DIRS[i]; i++) {
-            char path[256];
-            snprintf(path, sizeof(path), "%sprayer_potion.png", SPRITE_DIRS[i]);
-            if (FileExists(path)) {
-                v.tex_ppot = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sshark.png", SPRITE_DIRS[i]);
-                v.tex_shark = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_melee_on.png", SPRITE_DIRS[i]);
-                v.tex_pray_melee_on = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_melee_off.png", SPRITE_DIRS[i]);
-                v.tex_pray_melee_off = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_missiles_on.png", SPRITE_DIRS[i]);
-                v.tex_pray_range_on = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_missiles_off.png", SPRITE_DIRS[i]);
-                v.tex_pray_range_off = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_magic_on.png", SPRITE_DIRS[i]);
-                v.tex_pray_magic_on = LoadTexture(path);
-                snprintf(path, sizeof(path), "%sprotect_magic_off.png", SPRITE_DIRS[i]);
-                v.tex_pray_magic_off = LoadTexture(path);
-                snprintf(path, sizeof(path), "%stab_inventory.png", SPRITE_DIRS[i]);
-                v.tex_tab_inv = LoadTexture(path);
-                snprintf(path, sizeof(path), "%stab_combat.png", SPRITE_DIRS[i]);
-                v.tex_tab_combat = LoadTexture(path);
-                snprintf(path, sizeof(path), "%stab_prayer.png", SPRITE_DIRS[i]);
-                v.tex_tab_prayer = LoadTexture(path);
-                fprintf(stderr, "Tab sprites loaded from %s\n", SPRITE_DIRS[i]);
-                loaded = 1;
-                break;
-            }
+        if (fc_asset_exists("sprites/prayer_potion.png")) {
+            v.tex_ppot = fc_load_texture_asset("sprites/prayer_potion.png");
+            v.tex_shark = fc_load_texture_asset("sprites/shark.png");
+            v.tex_pray_melee_on = fc_load_texture_asset("data/sprites/ui/prayeron_14.png");
+            v.tex_pray_melee_off = fc_load_texture_asset("data/sprites/ui/prayeroff_14.png");
+            v.tex_pray_range_on = fc_load_texture_asset("data/sprites/ui/prayeron_13.png");
+            v.tex_pray_range_off = fc_load_texture_asset("data/sprites/ui/prayeroff_13.png");
+            v.tex_pray_magic_on = fc_load_texture_asset("data/sprites/ui/prayeron_12.png");
+            v.tex_pray_magic_off = fc_load_texture_asset("data/sprites/ui/prayeroff_12.png");
+            if (v.tex_pray_melee_on.id == 0)
+                v.tex_pray_melee_on = fc_load_texture_asset("sprites/protect_melee_on.png");
+            if (v.tex_pray_melee_off.id == 0)
+                v.tex_pray_melee_off = fc_load_texture_asset("sprites/protect_melee_off.png");
+            if (v.tex_pray_range_on.id == 0)
+                v.tex_pray_range_on = fc_load_texture_asset("sprites/protect_missiles_on.png");
+            if (v.tex_pray_range_off.id == 0)
+                v.tex_pray_range_off = fc_load_texture_asset("sprites/protect_missiles_off.png");
+            if (v.tex_pray_magic_on.id == 0)
+                v.tex_pray_magic_on = fc_load_texture_asset("sprites/protect_magic_on.png");
+            if (v.tex_pray_magic_off.id == 0)
+                v.tex_pray_magic_off = fc_load_texture_asset("sprites/protect_magic_off.png");
+            v.tex_tab_inv = fc_load_texture_asset("sprites/tab_inventory.png");
+            v.tex_tab_combat = fc_load_texture_asset("sprites/tab_combat.png");
+            v.tex_tab_prayer = fc_load_texture_asset("sprites/tab_prayer.png");
+            fprintf(stderr, "Tab sprites loaded from %s\n", fc_asset_root());
+        } else {
+            fprintf(stderr, "warning: tab/inventory sprites not found under asset root %s\n",
+                    fc_asset_root());
         }
-        if (!loaded)
-            fprintf(stderr, "warning: tab/inventory sprites not found in any known sprite directory\n");
     }
 
     v.combat_style = 1;  /* Rapid default */
@@ -2345,6 +3672,7 @@ int main(int argc, char** argv) {
 
     while (!WindowShouldClose()) {
         int quit_after_tick = 0;
+        int ui_capture = 0;
         /* Screenshot mode */
         if (screenshot_mode && frame_count == 5) {
             TakeScreenshot(screenshot_path);
@@ -2393,10 +3721,14 @@ int main(int argc, char** argv) {
                 /* Toggle all on/off */
                 v.dbg_flags = v.dbg_flags ? 0 : DBG_ALL;
             }
+            if (v.dbg_flags)
+                v.ui.active_tab = RUNEC_UI_TAB_FRIENDS;
         }
         /* D: match the on-screen controls without interfering with east movement */
         if (IsKeyPressed(KEY_D) && !IsKeyDown(KEY_W) && !IsKeyDown(KEY_A) && !IsKeyDown(KEY_S)) {
             v.dbg_flags = v.dbg_flags ? 0 : DBG_ALL;
+            if (v.dbg_flags)
+                v.ui.active_tab = RUNEC_UI_TAB_FRIENDS;
         }
         if (IsKeyPressed(KEY_GRAVE)) v.show_debug = !v.show_debug;
 
@@ -2414,15 +3746,28 @@ int main(int argc, char** argv) {
             v.cam_yaw=0; v.cam_pitch=0.6f; v.cam_dist=50;
         }
 
+        sync_fc_ui(&v);
+        ui_capture = process_runec_prayer_click(&v);
+        if (!ui_capture) {
+            ui_capture = runec_ui_handle_input(&v.ui, GetScreenWidth(), GetScreenHeight());
+            handle_runec_ui_intent(&v);
+        } else {
+            v.ui.last_intent.kind = RUNEC_UI_INTENT_NONE;
+        }
+        if (process_runec_clan_wave_scroll(&v))
+            ui_capture = 1;
+        if (process_runec_debug_tab_clicks(&v))
+            ui_capture = 1;
+
         /* Camera orbit + zoom */
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        if (!ui_capture && IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
             Vector2 d = GetMouseDelta();
             v.cam_yaw += d.x*0.005f; v.cam_pitch -= d.y*0.005f;
             if (v.cam_pitch < 0.1f) v.cam_pitch = 0.1f;
             if (v.cam_pitch > 1.4f) v.cam_pitch = 1.4f;
         }
         float wh = GetMouseWheelMove();
-        if (wh != 0) {
+        if (!ui_capture && wh != 0) {
             v.cam_dist *= (wh > 0) ? (1.0f/1.15f) : 1.15f;
             if (v.cam_dist < 5) v.cam_dist = 5;
             if (v.cam_dist > 300) v.cam_dist = 300;
@@ -2432,7 +3777,10 @@ int main(int argc, char** argv) {
         int tick = 0;
         if (!v.paused) {
             v.tick_acc += GetFrameTime() * (float)v.tps;
-            if (v.tick_acc >= 1.0f) { v.tick_acc -= 1.0f; tick = 1; }
+            if (v.tick_acc >= 1.0f) {
+                v.tick_acc = fmodf(v.tick_acc, 1.0f);
+                tick = 1;
+            }
             /* tick_frac: 0.0 right after tick, approaches 1.0 just before next tick */
             v.tick_frac = v.tick_acc;
             if (v.tick_frac > 1.0f) v.tick_frac = 1.0f;
@@ -2443,7 +3791,7 @@ int main(int argc, char** argv) {
          * These set routes/targets/buffers on the player struct.
          * The tick loop reads them when the next tick fires. */
         if (!v.auto_mode && v.state.terminal == TERMINAL_NONE) {
-            process_human_clicks(&v);
+            process_human_clicks(&v, ui_capture);
             /* In policy_pipe mode, allow UI clicks (tabs, panels) but
              * don't process gameplay keys (prayer/eat/drink) since
              * the policy controls those via stdin actions. */
@@ -2541,7 +3889,7 @@ int main(int argc, char** argv) {
                         spawn_projectile(&v, p3x, p3y, p3z, n3x, n3y, n3z,
                                          travel,
                                          CLITERAL(Color){200, 200, 50, 255}, 0.12f,
-                                         PROJ_CROSSBOW_BOLT);
+                                         PROJ_CROSSBOW_BOLT, 0, 0);
                     }
                 }
 
@@ -2565,28 +3913,113 @@ int main(int argc, char** argv) {
                 for (int hi = prev_player_hits; hi < v.state.player.num_pending_hits; hi++) {
                     FcPendingHit* ph = &v.state.player.pending_hits[hi];
                     if (!ph->active || ph->source_npc_idx < 0) continue;
-                    if (ph->attack_style == ATTACK_MELEE) continue;  /* no projectile for melee */
                     FcNpc* src = &v.state.npcs[ph->source_npc_idx];
                     if (!src->active) continue;
-                    float s3x = (float)src->x + (float)src->size*0.5f;
-                    float s3y = ground_y(&v, src->x, src->y) + 1.0f + (float)src->size*0.3f;
-                    float s3z = -((float)src->y + (float)src->size*0.5f);
+                    mark_npc_attack_visual(&v, ph->source_npc_idx,
+                                           ph->attack_style);
+                    if (ph->attack_style == ATTACK_MELEE) continue;  /* no projectile for melee */
+                    int sx_tile = src->x;
+                    int sy_tile = src->y;
+                    if (src->size > 1) {
+                        if (v.state.player.x < src->x) sx_tile = src->x;
+                        else if (v.state.player.x >= src->x + src->size) sx_tile = src->x + src->size - 1;
+                        else sx_tile = v.state.player.x;
+                        if (v.state.player.y < src->y) sy_tile = src->y;
+                        else if (v.state.player.y >= src->y + src->size) sy_tile = src->y + src->size - 1;
+                        else sy_tile = v.state.player.y;
+                    }
+                    float src_ground = ground_y(&v, sx_tile, sy_tile);
+                    float s3x = (float)sx_tile + 0.5f;
+                    float s3y = src_ground + 1.0f + (float)src->size*0.3f;
+                    float s3z = -((float)sy_tile + 0.5f);
+                    float dst_y = p3y;
                     float travel = (float)ph->ticks_remaining * tick_sec;
                     if (travel < 0.1f) travel = 0.1f;
                     Color pc = (ph->attack_style == ATTACK_MAGIC)
-                        ? CLITERAL(Color){80, 80, 255, 255}
-                        : CLITERAL(Color){80, 200, 80, 255};
+                        ? CLITERAL(Color){255, 104, 36, 235}
+                        : CLITERAL(Color){218, 178, 92, 235};
                     float rad = (src->npc_type == NPC_TZTOK_JAD) ? 0.3f : 0.15f;
-                    /* Pick projectile spot_id based on NPC type and attack style */
-                    uint32_t spot = 0;
-                    if (src->npc_type == NPC_TOK_XIL) spot = PROJ_TOK_XIL_SPINE;
-                    else if (src->npc_type == NPC_KET_ZEK) spot = PROJ_KET_ZEK_FIRE;
-                    else if (src->npc_type == NPC_TZTOK_JAD && ph->attack_style == ATTACK_MAGIC)
-                        spot = PROJ_JAD_MAGIC;
-                    else if (src->npc_type == NPC_TZTOK_JAD && ph->attack_style == ATTACK_RANGED)
-                        spot = PROJ_JAD_RANGED;
-                    spawn_projectile(&v, s3x, s3y, s3z, p3x, p3y, p3z,
-                                     travel, pc, rad, spot);
+                    uint32_t travel_spot = 0;
+                    uint32_t launch_spot = 0;
+                    uint32_t impact_spot = 0;
+                    int use_profile = 0;
+                    float profile_start_time = 0.0f;
+                    float profile_end_time = 0.0f;
+                    float profile_angle = -1.0f;
+                    float profile_progress = -1.0f;
+                    float launch_y = s3y;
+                    if (src->npc_type == NPC_TOK_XIL) {
+                        travel_spot = PROJ_TOK_XIL_SPINE;
+                        impact_spot = PROJ_TOK_XIL_IMPACT;
+                    } else if (src->npc_type == NPC_KET_ZEK) {
+                        travel_spot = PROJ_KET_ZEK_FIRE;
+                        impact_spot = PROJ_KET_ZEK_IMPACT;
+                    } else if (src->npc_type == NPC_TZTOK_JAD &&
+                               ph->attack_style == ATTACK_MAGIC) {
+                        launch_spot = PROJ_JAD_MAGIC_LAUNCH;
+                        travel_spot = PROJ_JAD_MAGIC_TRAVEL;
+                        impact_spot = PROJ_JAD_MAGIC_IMPACT;
+                        launch_y = src_ground + 92.0f / 128.0f;
+                        s3y = src_ground + 172.0f / 128.0f;
+                        dst_y = gy_p + 124.0f / 128.0f;
+                        profile_start_time = 41.0f;
+                        profile_angle = 16.0f;
+                        profile_progress = 64.0f;
+                        use_profile = 1;
+                    } else if (src->npc_type == NPC_TZTOK_JAD &&
+                               ph->attack_style == ATTACK_RANGED) {
+                        launch_spot = PROJ_JAD_RANGE_LAUNCH;
+                        travel_spot = PROJ_JAD_RANGED_TRAVEL;
+                        impact_spot = PROJ_JAD_RANGED_IMPACT;
+                        launch_y = src_ground + 96.0f / 128.0f;
+                        s3y = src_ground + 163.0f / 128.0f;
+                        dst_y = gy_p + 146.0f / 128.0f;
+                        profile_start_time = 32.0f;
+                        profile_angle = 15.0f;
+                        profile_progress = 11.0f;
+                        use_profile = 1;
+                    }
+                    if (use_profile) {
+                        int dx = sx_tile > v.state.player.x
+                            ? sx_tile - v.state.player.x
+                            : v.state.player.x - sx_tile;
+                        int dy = sy_tile > v.state.player.y
+                            ? sy_tile - v.state.player.y
+                            : v.state.player.y - sy_tile;
+                        int dist = dx > dy ? dx : dy;
+                        profile_end_time = profile_start_time + 5.0f * (float)dist;
+                        int profile_ticks = 1 + (int)(profile_end_time / 30.0f);
+                        float profile_travel = (float)profile_ticks * tick_sec;
+                        if (travel < profile_travel) travel = profile_travel;
+                        float launch_secs = (profile_start_time > 30.0f
+                            ? profile_start_time : 30.0f) / 30.0f * tick_sec;
+                        float launch_yaw =
+                            atan2f(p3x - s3x, p3z - s3z) * (180.0f / 3.14159f);
+                        spawn_spot_effect(&v, launch_spot, s3x, launch_y, s3z,
+                                          launch_secs, pc, rad, launch_yaw);
+                    }
+                    VisualProjectile* vp =
+                        spawn_projectile(&v, s3x, s3y, s3z, p3x, dst_y, p3z,
+                                         travel, pc, rad, travel_spot,
+                                         launch_spot, impact_spot);
+                    if (use_profile)
+                        apply_projectile_profile(vp, profile_start_time,
+                                                 profile_end_time,
+                                                 profile_angle,
+                                                 profile_progress);
+                }
+
+                for (int ni = 0; ni < FC_MAX_NPCS; ni++) {
+                    FcNpc* n = &v.state.npcs[ni];
+                    if (!n->active || n->npc_type != NPC_TZTOK_JAD ||
+                        n->attack_timer != n->attack_speed)
+                        continue;
+                    if (fc_npc_can_melee_player(v.state.player.x,
+                                                v.state.player.y,
+                                                n->x, n->y, n->size,
+                                                v.state.walkable)) {
+                        mark_npc_attack_visual(&v, ni, ATTACK_MELEE);
+                    }
                 }
             }
 
@@ -2637,21 +4070,44 @@ int main(int argc, char** argv) {
         /* Update visual projectiles */
         {
             float dt = GetFrameTime();
+            objects_update_texture_anims(v.objects, dt);
+            models_update_texture_anims(v.object_anim_models, dt);
+            models_update_texture_anims(v.projectile_models, dt);
+            models_update_texture_anims(v.npc_models, dt);
+            models_update_texture_anims(v.player_model, dt);
             for (int i = 0; i < MAX_PROJECTILES; i++) {
                 if (v.projectiles[i].active) {
                     v.projectiles[i].elapsed += dt;
                     if (v.projectiles[i].elapsed >= v.projectiles[i].total_time) {
-                        v.projectiles[i].active = 0;
+                        float effect_secs = (v.tps > 0.0f)
+                            ? (3.0f / (float)v.tps) : 1.8f;
+                        if (effect_secs < 0.1f) effect_secs = 0.1f;
+                        spawn_spot_effect(&v, v.projectiles[i].impact_spot_id,
+                                          v.projectiles[i].dst_x,
+                                          v.projectiles[i].dst_y,
+                                          v.projectiles[i].dst_z,
+                                          effect_secs, v.projectiles[i].color,
+                                          v.projectiles[i].radius * 1.4f,
+                                          0.0f);
+                        free_projectile(&v.projectiles[i]);
                     }
+                }
+            }
+            for (int i = 0; i < MAX_VISUAL_EFFECTS; i++) {
+                if (v.effects[i].active) {
+                    v.effects[i].elapsed += dt;
+                    if (v.effects[i].elapsed >= v.effects[i].total_time)
+                        free_effect(&v.effects[i]);
                 }
             }
         }
 
         /* Update player animation */
-        if (v.player_anim_state && v.anim_cache && v.player_model &&
-            v.player_model->count > 0) {
-            NpcModelEntry* pm = &v.player_model->entries[0];
+        if (v.anim_cache && v.player_model && v.player_model->count > 0) {
+            NpcModelEntry* pm = viewer_player_model_entry(&v);
             float dt = GetFrameTime();
+            recreate_player_anim_state(&v, pm);
+            if (!v.player_anim_state || !pm) goto skip_player_anim_update;
 
             /* Select animation based on player state.
              * Attack anim plays while attack_timer > 2 (first 3 ticks of the 5-tick cooldown).
@@ -2691,26 +4147,12 @@ int main(int argc, char** argv) {
                 AnimFrameData* frame_data = &seq->frames[v.player_anim_frame].frame;
                 AnimFrameBase* fb = anim_get_framebase(v.anim_cache, frame_data->framebase_id);
                 if (fb) {
-                    anim_apply_frame(v.player_anim_state, pm->base_verts, frame_data, fb);
-
-                    /* Re-expand into mesh vertices and scale to tile units */
-                    float* mesh_verts = pm->model.meshes[0].vertices;
-                    anim_update_mesh(mesh_verts, v.player_anim_state,
-                                     pm->face_indices, pm->face_count);
-
-                    /* Scale from OSRS units to tile units (same as initial load) */
-                    int evc = pm->face_count * 3;
-                    for (int vi = 0; vi < evc; vi++) {
-                        mesh_verts[vi*3+0] /=  128.0f;
-                        mesh_verts[vi*3+1] /=  128.0f;
-                        mesh_verts[vi*3+2] /= -128.0f;
-                    }
-
-                    UpdateMeshBuffer(pm->model.meshes[0], 0, mesh_verts,
-                                     evc * 3 * sizeof(float), 0);
+                    apply_anim_frame_to_entry(pm, v.player_anim_state,
+                                              frame_data, fb);
                 }
             }
         }
+skip_player_anim_update:
 
         /* Update NPC animations */
         if (v.anim_cache && v.npc_models) {
@@ -2723,6 +4165,8 @@ int main(int argc, char** argv) {
                         anim_model_state_free(v.npc_anim_states[ni]);
                         v.npc_anim_states[ni] = NULL;
                     }
+                    v.npc_attack_visual_style[ni] = ATTACK_NONE;
+                    v.npc_attack_visual_timer[ni] = 0.0f;
                     continue;
                 }
 
@@ -2751,12 +4195,15 @@ int main(int argc, char** argv) {
                 if (n->is_dead || n->died_this_tick) {
                     desired = (n->npc_type > 0 && n->npc_type < 9)
                         ? NPC_ANIM_DEATH[n->npc_type] : 0;
+                } else if (v.npc_attack_visual_timer[ni] > 0.0f) {
+                    desired = npc_attack_animation_id(
+                        n->npc_type, v.npc_attack_visual_style[ni]);
                 } else if (n->damage_taken_this_tick > 0) {
                     /* NPC just got hit — brief defend/flinch, handled by staying on current */
                 } else if (n->attack_timer == n->attack_speed) {
                     /* NPC just attacked */
-                    desired = (n->npc_type > 0 && n->npc_type < 9)
-                        ? NPC_ANIM_ATTACK[n->npc_type] : 0;
+                    desired = npc_attack_animation_id(n->npc_type,
+                                                      n->attack_style);
                 } else if (v.state.movement_this_tick) {
                     /* Check if this NPC moved (compare prev position) */
                     if (v.prev_npc_x[ni] != (float)n->x || v.prev_npc_y[ni] != (float)n->y) {
@@ -2794,6 +4241,8 @@ int main(int argc, char** argv) {
                 }
 
                 {
+                    models_recompute_texture_uvs_from_vertices(
+                        nme, v.npc_anim_states[ni]->verts);
                     float* mv = nme->model.meshes[0].vertices;
                     anim_update_mesh(mv, v.npc_anim_states[ni],
                                      nme->face_indices, nme->face_count);
@@ -2806,6 +4255,14 @@ int main(int argc, char** argv) {
                     UpdateMeshBuffer(nme->model.meshes[0], 0, mv,
                                      evc * 3 * sizeof(float), 0);
                 }
+
+                if (v.npc_attack_visual_timer[ni] > 0.0f) {
+                    v.npc_attack_visual_timer[ni] -= dt;
+                    if (v.npc_attack_visual_timer[ni] <= 0.0f) {
+                        v.npc_attack_visual_timer[ni] = 0.0f;
+                        v.npc_attack_visual_style[ni] = ATTACK_NONE;
+                    }
+                }
             }
         }
 
@@ -2813,27 +4270,10 @@ int main(int argc, char** argv) {
         BeginDrawing();
         ClearBackground(COL_BG);
         draw_scene(&v);
-        draw_header(&v);
-        draw_panel(&v);
-        draw_debug(&v);
+        sync_fc_ui(&v);
+        runec_ui_draw(&v.ui, GetScreenWidth(), GetScreenHeight());
+        draw_runec_debug_tabs(&v);
         draw_test_overlay(&v);
-
-        /* Status bar */
-        const char* status = v.paused ? "PAUSED — [Space] resume, [Right] step, [L] camera lock, use side-panel TPS buttons" :
-                             v.auto_mode ? "AUTO mode — [A] switch to manual" :
-                             "Left-click:move  Click NPC:attack  1/2/3:pray  F:eat  P:pot  L:camera lock  side-panel TPS";
-        DrawText(status, 10, WINDOW_H-14, 10, CLITERAL(Color){80,80,90,255});
-
-        /* Big centered pause prompt */
-        if (v.paused && v.state.terminal == TERMINAL_NONE) {
-            const char* msg = "Press SPACE to start";
-            int mw = MeasureText(msg, 30);
-            int mx = (FC_ARENA_WIDTH * TILE_SIZE - mw) / 2;
-            int my = WINDOW_H / 2 - 15;
-            DrawRectangle(mx - 10, my - 5, mw + 20, 40, CLITERAL(Color){0,0,0,180});
-            DrawText(msg, mx+1, my+1, 30, COL_TEXT_SHADOW);
-            DrawText(msg, mx, my, 30, COL_TEXT_YELLOW);
-        }
 
         EndDrawing();
     }
@@ -2853,16 +4293,28 @@ int main(int argc, char** argv) {
     if (v.tex_tab_inv.id > 0) UnloadTexture(v.tex_tab_inv);
     if (v.tex_tab_combat.id > 0) UnloadTexture(v.tex_tab_combat);
     if (v.tex_tab_prayer.id > 0) UnloadTexture(v.tex_tab_prayer);
+    clear_visuals(&v);
     for (int i = 0; i < FC_MAX_NPCS; i++) {
         if (v.npc_anim_states[i]) anim_model_state_free(v.npc_anim_states[i]);
     }
+    if (v.object_anim_runtimes) {
+        for (int i = 0; i < v.object_anim_runtime_count; i++) {
+            if (v.object_anim_runtimes[i].anim_state)
+                anim_model_state_free(v.object_anim_runtimes[i].anim_state);
+        }
+        free(v.object_anim_runtimes);
+    }
     if (v.player_anim_state) anim_model_state_free(v.player_anim_state);
     if (v.anim_cache) anim_cache_free(v.anim_cache);
+    if (v.spotanims) spotanims_free(v.spotanims);
     if (v.projectile_models) fc_npc_models_unload(v.projectile_models);
     if (v.player_model) fc_npc_models_unload(v.player_model);
     if (v.npc_models) fc_npc_models_unload(v.npc_models);
-    if (v.objects && v.objects->loaded) { UnloadModel(v.objects->model); free(v.objects); }
+    if (v.object_anim_models) fc_npc_models_unload(v.object_anim_models);
+    if (v.object_anims) object_anims_free(v.object_anims);
+    objects_free(v.objects);
     if (v.terrain && v.terrain->loaded) { UnloadModel(v.terrain->model); free(v.terrain->heightmap); free(v.terrain); }
+    runec_ui_shutdown(&v.ui);
     CloseWindow();
     return 0;
 }
