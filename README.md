@@ -1,3 +1,5 @@
+![Fight Caves RL playable viewer](runescape-rl/assets/readme/viewer-cover.png)
+
 # Fight Caves RL
 
 Training a reinforcement learning agent to complete the Old School RuneScape Fight Caves — a 63-wave PvM gauntlet ending in a boss fight against TzTok-Jad.
@@ -15,6 +17,13 @@ Training a reinforcement learning agent to complete the Old School RuneScape Fig
 - v35.1 reproduces hparams from `a3mi6u2g`, the top pick of the v34 long Protein sweep
   (200 trials over PPO/optimizer/policy knobs on v32.0 baseline)
 - Cold-start training: ~26 min for 3B steps on RTX 5070 Ti (~1.9M SPS)
+
+**Recent diagnostics:**
+- **v35 (`8z4lqldl`)** — same SOTA config with corrected Jad healer respawn behavior;
+  peak `jad_kill_rate=96.5%`, best saved checkpoint `90.6%`
+- **v36 (`jta3lkgx`)** — no-consumables diagnostic with `initial_sharks=0` and
+  `initial_prayer_doses=0`; same action heads/masks, peak `jad_kill_rate=80.8%`,
+  best saved checkpoint `69.1%`
 
 ![Agent Demo](runescape-rl/assets/demo.gif)
 
@@ -55,15 +64,51 @@ cmake --build build -j$(nproc)
 ./build/demo-env/fc_viewer
 ```
 
-Controls:
-- Arrow keys / WASD — move player
-- 1/2/3 — toggle protect melee/range/magic
-- Right-click drag — orbit camera
-- Scroll — zoom
-- O — toggle debug overlay
-- Q/Esc — quit
+From the repo root checkout, the viewer path is:
 
-<!-- TODO: Screenshot of the playable viewer with HUD, prayer icons, and NPC health bars -->
+```bash
+./runescape-rl/build/demo-env/fc_viewer
+```
+
+The viewer uses the same `fc-core` backend as training, with cache-derived Fight Caves terrain,
+objects, models, animations, spotanims, projectile visuals, sprites, minimap, and OSRS-style side
+tabs.
+
+![NPC tracking, wave selector, and TPS controls](runescape-rl/assets/readme/viewer-npc-controls.png)
+
+The clan chat tab is repurposed for viewer controls: clickable NPC targets, a wave selector, and
+manual TPS presets. The friends tab holds the debug dashboard when `D`/`O` is enabled, while the
+normal prayer tab remains clickable for Protect from Melee, Missiles, and Magic.
+
+<p>
+  <img src="runescape-rl/assets/readme/viewer-debug-overview.png" alt="Debug overlay showing reachable tiles, blocked tiles, NPC LOS, and player range" width="49%">
+  <img src="runescape-rl/assets/readme/viewer-debug-los.png" alt="Debug overlay closeup with blocked terrain, LOS, and ranged perimeter" width="49%">
+</p>
+
+Debug rendering can show walkable tiles in green, blocked tiles in red, NPC line-of-sight rays, path
+routes, and the player ranged perimeter. These overlays are visual diagnostics only; gameplay still
+comes from `fc-core`.
+
+<p>
+  <img src="runescape-rl/assets/readme/viewer-player.png" alt="Player diagnostic panel" width="24%">
+  <img src="runescape-rl/assets/readme/viewer-obs.png" alt="Observation diagnostic panel" width="24%">
+  <img src="runescape-rl/assets/readme/viewer-reward.png" alt="Reward diagnostic panel" width="24%">
+  <img src="runescape-rl/assets/readme/viewer-log.png" alt="Event log diagnostic panel" width="24%">
+</p>
+
+The side diagnostics expose player state, observation slots, masks, policy reward components, and an
+event log so policy behavior can be inspected while playing or replaying a checkpoint.
+
+Hotkeys:
+- Left click arena/minimap — route movement; click an NPC or target row to attack
+- `1` / `2` / `3` — toggle Protect from Melee / Missiles / Magic
+- `F` — eat shark; `P` — drink prayer potion; `X` — toggle run
+- `Space` — pause/resume; `Right Arrow` — single tick; `R` — reset episode
+- `D` or `O` — toggle debug overlay and open the friends diagnostics tab
+- `Shift+O` — cycle debug overlay groups
+- `G` — grid; `C` — collision overlay
+- `4` / `5` — camera presets; `L` — lock/unlock camera follow
+- Right-drag — orbit camera; scroll — zoom; `Q` / `Esc` — quit
 
 ### Train
 
@@ -138,7 +183,11 @@ runescape-rl/
 
 ## RL Config
 
-Current live config (v35.1 — v32.0 reward baseline + v34 sweep top-pick hparams):
+Current live config is the v36 no-consumables diagnostic: v35.1/v34 top-pick hparams with
+`initial_sharks=0` and `initial_prayer_doses=0`. Restoring full supplies means setting those two
+keys back to `20` and `32`.
+
+Base recipe (v35.1 — v32.0 reward baseline + v34 sweep top-pick hparams):
 
 | Category | Key params |
 |----------|-----------|
@@ -191,6 +240,7 @@ The v35.1 config holds the v32.0 reward shaping unchanged and swaps in only the 
 - **v32.0** — Added `shape_jad_heal_penalty=-0.3`: peak jad kill 0.810 (+15.4% over obs.1 prior SOTA)
 - **v34 sweep** — 200-trial Protein sweep on v32.0 baseline; identified PPO/optimizer recipe that lifted peak by another ~8.5%
 - **v35.1** — Cold-start reproduction of v34's top pick (`a3mi6u2g`); **peak jad kill rate 94.9% — current SOTA**
+- **v36** — No-consumables diagnostic (`jta3lkgx`): `initial_sharks=0`, `initial_prayer_doses=0`, same action heads/masks; peak Jad kill rate 80.8%
 
 ### Hparam Recipe (from the v34 sweep)
 

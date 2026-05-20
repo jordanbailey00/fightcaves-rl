@@ -38,6 +38,7 @@ static void load_collision_once(void) {
 
     static const char* collision_paths[] = {
         "assets/fightcaves.collision",
+        "runescape-rl/fc-core/assets/fightcaves.collision",
         "fc-core/assets/fightcaves.collision",
         "../fc-core/assets/fightcaves.collision",
         "../../fc-core/assets/fightcaves.collision",
@@ -66,6 +67,8 @@ static void load_collision_once(void) {
     }
 
     /* Fallback: open arena with border walls */
+    fprintf(stderr,
+            "warning: fightcaves.collision not found; using open fallback arena\n");
     memset(g_collision_cache, 1, sizeof(g_collision_cache));
     for (int x = 0; x < FC_ARENA_WIDTH; x++) {
         g_collision_cache[x][0] = 0;
