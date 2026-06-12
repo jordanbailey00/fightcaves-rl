@@ -137,6 +137,7 @@ static const char* fc_asset_root(void) {
     const char* env;
     const char* candidates[] = {
         "demo-env/assets",
+        "runescape-rl/demo-env/assets",
         "../demo-env/assets",
         "../../demo-env/assets",
         "assets",
@@ -180,7 +181,7 @@ static const char* fc_repo_root(void) {
     static int initialized = 0;
     const char* env;
     const char* asset_root_path;
-    const char* candidates[] = { ".", "..", "../..", NULL };
+    const char* candidates[] = { ".", "runescape-rl", "..", "../..", NULL };
     int i;
 
     if (fc_repo_root_override[0]) return fc_repo_root_override;

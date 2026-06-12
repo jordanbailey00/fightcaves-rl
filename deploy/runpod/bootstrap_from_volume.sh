@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VOLUME_ROOT="${RUNPOD_VOLUME_ROOT:-/runpod-volume}"
-WORK_ROOT="${RUNPOD_WORK_ROOT:-/workspace/claude}"
+WORK_ROOT="${RUNPOD_WORK_ROOT:-/workspace/fight-caves-rl}"
 VENV_ROOT="${RUNPOD_VENV_ROOT:-/opt/runescape-rl-venv}"
 
 ARCHIVE_PATH="${VOLUME_ROOT}/runescape-rl/releases/runescape-rl-v24s-training.tar.gz"

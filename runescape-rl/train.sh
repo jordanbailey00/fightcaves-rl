@@ -36,28 +36,44 @@ mkdir -p \
     "$PUFFER_DIR/wandb"
 
 cd "$PUFFER_DIR"
-source "$SRC_DIR/.venv/bin/activate"
+VENV_DIR="$SRC_DIR/.venv"
+if [ -z "${PYTHON_BIN:-}" ]; then
+    if [ -x "$VENV_DIR/bin/python3" ]; then
+        PYTHON_BIN="$VENV_DIR/bin/python3"
+    elif [ -x "$VENV_DIR/bin/python" ]; then
+        PYTHON_BIN="$VENV_DIR/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python3)"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python)"
+    else
+        echo "Error: python not found. Create $VENV_DIR or install python3." >&2
+        exit 1
+    fi
+fi
+export PYTHON_BIN
+export VIRTUAL_ENV="$VENV_DIR"
 export PUFFERLIB_DIR="$PUFFER_DIR"
-export PATH=/usr/local/cuda/bin:$PATH
+export PATH="$VENV_DIR/bin:/usr/local/cuda/bin:$PATH"
 export FC_COLLISION_PATH="$SRC_DIR/fc-core/assets/fightcaves.collision"
 export WANDB_DIR="$PUFFER_DIR/wandb"
 export WANDB_CACHE_DIR="$PUFFER_DIR/wandb/.cache"
 export WANDB_CONFIG_DIR="$PUFFER_DIR/wandb/.config"
 export WANDB_DATA_DIR="$PUFFER_DIR/wandb/.data"
 export WANDB_PROJECT="${WANDB_PROJECT:-fight caves rl}"
-CUDNN_LIB="$(python -c "import nvidia.cudnn, os; print(os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || true)"
+CUDNN_LIB="$("$PYTHON_BIN" -c "import nvidia.cudnn, os; print(os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || true)"
 if [ -n "$CUDNN_LIB" ]; then
     export LD_LIBRARY_PATH="$CUDNN_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 export CC="${CC:-gcc}"
 export CXX="${CXX:-g++}"
 
-EXT_SUFFIX="$(python -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX') or '')")"
+EXT_SUFFIX="$("$PYTHON_BIN" -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX') or '')")"
 BACKEND_SO="$PUFFER_DIR/pufferlib/_C${EXT_SUFFIX}"
 BACKEND_REBUILD_REASON=""
 if [ ! -f "$BACKEND_SO" ]; then
     BACKEND_REBUILD_REASON="missing backend"
-elif ! python -c "import importlib.util, sys; spec=importlib.util.spec_from_file_location('pufferlib._C', sys.argv[1]); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); ok=(getattr(mod, 'env_name', None) == 'fight_caves' and hasattr(mod, 'create_pufferl')); raise SystemExit(0 if ok else 1)" "$BACKEND_SO"; then
+elif ! "$PYTHON_BIN" -c "import importlib.util, sys; spec=importlib.util.spec_from_file_location('pufferlib._C', sys.argv[1]); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); ok=(getattr(mod, 'env_name', None) == 'fight_caves' and hasattr(mod, 'create_pufferl')); raise SystemExit(0 if ok else 1)" "$BACKEND_SO"; then
     BACKEND_REBUILD_REASON="backend missing compiled trainer API"
 elif find "$SRC_DIR/fc-core" "$SRC_DIR/training-env" "$PUFFER_DIR/src/vecenv.h" -type f -newer "$BACKEND_SO" -print -quit | grep -q .; then
     BACKEND_REBUILD_REASON="backend sources newer than compiled extension"
@@ -89,7 +105,7 @@ for arg in "$@"; do
         EXTRA_ARGS+=("$arg")
     fi
 done
-CMD=(python -m pufferlib.pufferl "$MODE" fight_caves)
+CMD=("$PYTHON_BIN" -m pufferlib.pufferl "$MODE" fight_caves)
 if [ -n "$WANDB_FLAG" ]; then
     CMD+=("$WANDB_FLAG")
 fi

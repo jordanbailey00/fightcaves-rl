@@ -5,15 +5,16 @@
 # doesn't collide with the original runs.
 #
 # Usage (from anywhere):
-#   bash /home/joe/projects/runescape-rl/claude/runescape-rl/scripts/rerun_v27_series.sh
+#   bash /path/to/fight-caves-rl/runescape-rl/scripts/rerun_v27_series.sh
 #
 # Each run takes ~30 min at 3.5B steps, so total wall clock is ~90 min.
 # On exit (clean or failure), the active config is restored to v27.3.
 
 set -euo pipefail
 
-BASE="/home/joe/projects/runescape-rl/claude"
-SRC="$BASE/runescape-rl"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE="$(cd "$SRC/.." && pwd)"
 CONFIG="$SRC/config/fight_caves.ini"
 SNAPSHOTS="$SRC/config/snapshots"
 

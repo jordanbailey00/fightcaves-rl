@@ -18,6 +18,24 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 DEFAULT_PUFFERLIB_DIR="$(cd "$REPO_DIR/.." && pwd)/pufferlib_4"
 PUFFERLIB_DIR="${PUFFERLIB_DIR:-$DEFAULT_PUFFERLIB_DIR}"
+VENV_DIR="$REPO_DIR/.venv"
+if [ -z "${PYTHON_BIN:-}" ]; then
+    if [ -x "$VENV_DIR/bin/python3" ]; then
+        PYTHON_BIN="$VENV_DIR/bin/python3"
+    elif [ -x "$VENV_DIR/bin/python" ]; then
+        PYTHON_BIN="$VENV_DIR/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python3)"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python)"
+    else
+        echo "Error: python not found. Create $VENV_DIR or install python3." >&2
+        exit 1
+    fi
+fi
+export PYTHON_BIN
+export VIRTUAL_ENV="$VENV_DIR"
+export PATH="$VENV_DIR/bin:$PATH"
 
 if [ ! -d "$PUFFERLIB_DIR/src" ]; then
     echo "Error: PufferLib not found at $PUFFERLIB_DIR"
@@ -118,10 +136,10 @@ if [ -z "$OBS_TENSOR_T" ]; then
 fi
 
 # Python paths
-PYTHON_INCLUDE=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
-PYBIND_INCLUDE=$(python -c "import pybind11; print(pybind11.get_include())")
-NUMPY_INCLUDE=$(python -c "import numpy; print(numpy.get_include())")
-EXT_SUFFIX=$(python -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))")
+PYTHON_INCLUDE=$("$PYTHON_BIN" -c "import sysconfig; print(sysconfig.get_path('include'))")
+PYBIND_INCLUDE=$("$PYTHON_BIN" -c "import pybind11; print(pybind11.get_include())")
+NUMPY_INCLUDE=$("$PYTHON_BIN" -c "import numpy; print(numpy.get_include())")
+EXT_SUFFIX=$("$PYTHON_BIN" -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))")
 OUTPUT="pufferlib/_C${EXT_SUFFIX}"
 
 if [ "$MODE" = "cpu" ]; then
@@ -178,10 +196,10 @@ else
         [ -f "$dir/libcudnn.so" ] && CUDNN_LFLAG="-L$dir" && break
     done
     if [ -z "$CUDNN_IFLAG" ]; then
-        CUDNN_IFLAG=$(python -c "import nvidia.cudnn, os; print('-I' + os.path.join(nvidia.cudnn.__path__[0], 'include'))" 2>/dev/null || echo "")
+        CUDNN_IFLAG=$("$PYTHON_BIN" -c "import nvidia.cudnn, os; print('-I' + os.path.join(nvidia.cudnn.__path__[0], 'include'))" 2>/dev/null || echo "")
     fi
     if [ -z "$CUDNN_LFLAG" ]; then
-        CUDNN_LFLAG=$(python -c "import nvidia.cudnn, os; print('-L' + os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || echo "")
+        CUDNN_LFLAG=$("$PYTHON_BIN" -c "import nvidia.cudnn, os; print('-L' + os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || echo "")
     fi
 
     if [ -n "$NVCC_ARCH" ]; then
@@ -223,7 +241,7 @@ else
     # Find cuDNN from PyTorch's bundled copy if not system-installed.
     # Some wheels only ship versioned sonames (for example libcudnn.so.9)
     # without the linker-facing libcudnn.so symlink.
-    VENV_CUDNN=$(python -c "import nvidia.cudnn, os; print('-L' + os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || echo "")
+    VENV_CUDNN=$("$PYTHON_BIN" -c "import nvidia.cudnn, os; print('-L' + os.path.join(nvidia.cudnn.__path__[0], 'lib'))" 2>/dev/null || echo "")
     if [ -z "$CUDNN_LFLAG" ] && [ -n "$VENV_CUDNN" ]; then
         CUDNN_LFLAG="$VENV_CUDNN"
     fi

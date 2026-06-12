@@ -231,7 +231,7 @@ The best v36 checkpoint is not at the raw peak because checkpoints land
 every 50 epochs. Best saved checkpoint:
 
 ```text
-/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/jta3lkgx/0000001416626176.bin
+<repo-root>/pufferlib_4/checkpoints/fight_caves/jta3lkgx/0000001416626176.bin
 ```
 
 `jad_kill_rate = 0.691`, `reached_wave_63 = 0.821`, `wave_reached = 61.20`.
@@ -452,7 +452,7 @@ Top raw `jad_kill_rate` points:
 Best saved checkpoint:
 
 ```text
-/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8z4lqldl/0000002360344576.bin
+<repo-root>/pufferlib_4/checkpoints/fight_caves/8z4lqldl/0000002360344576.bin
 ```
 
 `jad_kill_rate = 0.906`, `reached_wave_63 = 0.961`, `wave_reached = 62.52`.
@@ -559,7 +559,7 @@ gain is**.
 **How to launch each retrain (tomorrow):**
 
 ```bash
-cd /home/joe/projects/runescape-rl/claude/runescape-rl
+cd <repo-root>/runescape-rl
 CONFIG_PATH=config/v35_retrains/v35.1.ini ./train.sh   # a3mi6u2g recipe
 CONFIG_PATH=config/v35_retrains/v35.2.ini ./train.sh   # fpdao4ac recipe
 # ...etc through v35.7
@@ -573,8 +573,8 @@ Total wall time for all 7: ~3-4 hours sequential.
 **To watch any retrain in the viewer once it has a checkpoint:**
 
 ```bash
-cd /home/joe/projects/runescape-rl/claude/runescape-rl
-python3 demo-env/eval_viewer.py --ckpt /home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/<new_run_id>/<latest>.bin
+cd <repo-root>/runescape-rl
+python3 demo-env/eval_viewer.py --ckpt <repo-root>/pufferlib_4/checkpoints/fight_caves/<new_run_id>/<latest>.bin
 ```
 
 **Pre-flight checklist:**
@@ -4183,9 +4183,9 @@ Peak metrics (before collapse):
   - `3.213B`: `jad_kill_rate = 0.0900`, `reached_wave_63 = 0.8850`
 - nearest eval checkpoints to peak windows:
   - best sampled Jad window (~3.311B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/bhwunrye/0000003304062976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/bhwunrye/0000003304062976.bin`
   - best sampled wave-63 access (~3.173B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/bhwunrye/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/bhwunrye/0000003146776576.bin`
 
 Key sampled progression:
 - sampled `wave_reached >= 30` by `130M`
@@ -4365,9 +4365,9 @@ Key sampled progression:
     - `jad_kill_rate = 0.01739`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window (~3.440B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zhqujlo6/0000003461349376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zhqujlo6/0000003461349376.bin`
   - best sampled wave-63 access (~3.337B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zhqujlo6/0000003356491776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zhqujlo6/0000003356491776.bin`
 
 Cold-start comparison:
 
@@ -4502,11 +4502,11 @@ Key sampled progression:
     - `jad_kill_rate = 0.0`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window (~4.300B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004300210176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004300210176.bin`
   - best sampled wave-63 access (~4.835B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004824498176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004824498176.bin`
   - best sampled wave_reached (~4.989B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004981784576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/e46hw2zw/0000004981784576.bin`
 
 Comparison to v25.9 (`8td831nt`, same config minus prayer drain penalty):
 - v25.10a regressed from v25.9:
@@ -4715,11 +4715,11 @@ Key sampled progression:
     - `jad_kill_rate = 0.00334`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window (~3.800B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003828350976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003828350976.bin`
   - best sampled wave-63 access (~3.630B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003618635776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003618635776.bin`
   - best sampled wave_reached (~3.689B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003671064576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/z5oie92l/0000003671064576.bin`
 
 Comparison to v25.9 (`8td831nt`, same config minus prayer drain/wave bonus/obs):
 - v25.10 regressed significantly from v25.9:
@@ -4901,11 +4901,11 @@ Key sampled progression:
     - `jad_kill_rate = 0.0`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window (~1.827B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8td831nt/0000001836056576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/8td831nt/0000001836056576.bin`
   - best sampled `reached_wave_63` + Jad window (~1.892B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8td831nt/0000001888485376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/8td831nt/0000001888485376.bin`
   - best sampled `wave_reached` (~4.726B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8td831nt/0000004719640576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/8td831nt/0000004719640576.bin`
 
 Cold-start comparison table:
 
@@ -4979,7 +4979,7 @@ Goal:
   better warm-start than the 1.888B checkpoint used by v25.5/v25.5a
 
 Warm-start source:
-- `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
+- `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
 
 Why this checkpoint:
 - `7qhjnxa2/0000000368050176.bin` was identified as the best practical
@@ -5006,7 +5006,7 @@ Diff versus v25.5a:
 - analytics: removed `reached_wave_30`
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=150.0`, `w_player_death=-20.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_reach_wave_60_bonus=0.0`, `shape_reach_wave_61_bonus=0.0`, `shape_reach_wave_62_bonus=0.0`, `shape_reach_wave_63_bonus=0.0`, `shape_jad_kill_bonus=0.0`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -5064,9 +5064,9 @@ Key sampled progression:
     - `jad_kill_rate = 0.0`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yra7umqg/0000000105906176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yra7umqg/0000000105906176.bin`
   - best sampled wave-63 access window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yra7umqg/0000000787480576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yra7umqg/0000000787480576.bin`
 
 Comparison to `v25.4` (`7qhjnxa2`):
 - final late-game profile was similar:
@@ -5263,7 +5263,7 @@ Goal:
   the cleaned-up v25.6 backend (instant Jad terminal, no milestone bonuses)
 
 Warm-start source:
-- `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`
+- `<repo-root>/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`
 
 Why this checkpoint:
 - `pbracd6x` was a run using the v25.5a config + the same `7qhjnxa2/368M`
@@ -5277,7 +5277,7 @@ Diff versus v25.6:
 - all other config, code, and backend identical to v25.6
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=150.0`, `w_player_death=-20.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_reach_wave_60_bonus=0.0`, `shape_reach_wave_61_bonus=0.0`, `shape_reach_wave_62_bonus=0.0`, `shape_reach_wave_63_bonus=0.0`, `shape_jad_kill_bonus=0.0`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -5342,10 +5342,10 @@ Key sampled progression:
     - `jad_kill_rate = 0.0`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad windows (~577M / 1.273B):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000000577765376.bin`
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000001259339776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000000577765376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000001259339776.bin`
   - best sampled wave-63 access window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000000577765376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/w0spvmva/0000000577765376.bin`
 
 Comparison to v25.6 (`yra7umqg`):
 - final metrics were very similar:
@@ -5390,14 +5390,14 @@ Goal:
   separate `w_cave_complete` channel)
 
 Warm-start source:
-- `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
+- `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
 
 Backend:
 - old code — cave completion required all NPCs including healers to be dead
 - no wave duration analytics
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_reach_wave_60_bonus=0.0`, `shape_reach_wave_61_bonus=0.0`, `shape_reach_wave_62_bonus=0.0`, `shape_reach_wave_63_bonus=100.0`, `shape_jad_kill_bonus=500.0`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -5422,11 +5422,11 @@ Key sampled progression:
     - `jad_kill_rate = 0.006928`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window (42M):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000053477376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000053477376.bin`
   - best sustained Jad + high wave-63 (111M):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000105906176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000105906176.bin`
   - 420M (near earlier identified best practical checkpoint):
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/pbracd6x/0000000420478976.bin`
 
 Note:
 - this run had `shape_reach_wave_63_bonus=100.0` and `shape_jad_kill_bonus=500.0`
@@ -5452,7 +5452,7 @@ Goal:
 Planned recipe:
 - same as `v25.5`
 - same warm-start:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
 - additive per-episode milestone bonuses:
   - `shape_reach_wave_60_bonus = 0.0`
   - `shape_reach_wave_61_bonus = 0.0`
@@ -5469,7 +5469,7 @@ Diff versus `v25.5`:
 - all other config, code, and warm-start inputs remain identical
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_reach_wave_60_bonus=0.0`, `shape_reach_wave_61_bonus=0.0`, `shape_reach_wave_62_bonus=0.0`, `shape_reach_wave_63_bonus=100.0`, `shape_jad_kill_bonus=500.0`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -5491,7 +5491,7 @@ Backend notes:
 Actual run:
 - `wiee1ezs`
 - local run log:
-  - [wiee1ezs.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/wiee1ezs.json)
+  - [wiee1ezs.json](../../pufferlib_4/logs/fight_caves/wiee1ezs.json)
 
 Results (`wiee1ezs`):
 - completed normally
@@ -5538,14 +5538,14 @@ Key sampled progression:
     - `jad_kill_rate = 0.0`
 - nearest eval checkpoints to the important windows:
   - best sampled Jad window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/wiee1ezs/0000000368050176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/wiee1ezs/0000000368050176.bin`
   - best sampled wave-63 access window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/wiee1ezs/0000000472907776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/wiee1ezs/0000000472907776.bin`
 
 Comparison to `v25.5`:
 - sampled and final metrics were numerically identical to `sluy9lmm`
 - both runs used the same warm-start:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
 - practical outcome:
   - narrowing the ladder from `60/61/62/63 + Jad` to only `63 + Jad` did not
     produce any observable behavioral change under this seed/checkpoint
@@ -5573,7 +5573,7 @@ Recommendation:
 - do not spend more runs on milestone-ladder variants right now
 - keep `7qhjnxa2` as the best checkpoint-source run from this branch
 - current best checkpoint candidate remains:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000368050176.bin`
 - next highest-value runs remain:
   - `v26` cold-start on the `v25.4` / `v25.5a` recipe
   - `v26.1` warm-start from the best `v26` checkpoint
@@ -5592,7 +5592,7 @@ Goal:
 Planned recipe:
 - same as `v25.4`
 - warm-start from the strongest sampled frontier checkpoint in `v25.4`:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
 - additive per-episode milestone bonuses:
   - `shape_reach_wave_60_bonus = 60.0`
   - `shape_reach_wave_61_bonus = 90.0`
@@ -5663,7 +5663,7 @@ Backend notes:
 Actual run:
 - `sluy9lmm`
 - local run log:
-  - [sluy9lmm.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/sluy9lmm.json)
+  - [sluy9lmm.json](../../pufferlib_4/logs/fight_caves/sluy9lmm.json)
 
 Results (`sluy9lmm`):
 - completed normally
@@ -5709,13 +5709,13 @@ Key sampled progression:
     - `jad_kill_rate = 0.0002132`
 - nearest eval checkpoints to the important windows:
   - early breakout / best sampled Jad window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000000630194176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000000630194176.bin`
   - strongest sampled late-game plateau:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000001888485376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000001888485376.bin`
   - best sampled `reached_wave_63` window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000003146776576.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/sluy9lmm/0000004999610368.bin`
 
 Progression versus `v25.4` (`7qhjnxa2`):
 - final late-game stability improved:
@@ -5807,10 +5807,10 @@ Exact difference versus `v25.3`:
 - same `w_correct_jad_prayer = 2.0`
 - generic `correct_danger_prayer` no longer applies to blocked melee hits
 - warm-start path switches to:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -5818,7 +5818,7 @@ Exact active config:
 Actual run:
 - `7qhjnxa2`
 - local run log:
-  - [7qhjnxa2.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/7qhjnxa2.json)
+  - [7qhjnxa2.json](../../pufferlib_4/logs/fight_caves/7qhjnxa2.json)
 
 Results (`7qhjnxa2`):
 - completed normally
@@ -5875,13 +5875,13 @@ Key progression points:
     - `jad_kill_rate = 0.000250`
 - nearest eval checkpoints to the important windows:
   - early breakout:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000630194176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000000630194176.bin`
   - strongest sampled frontier window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000001888485376.bin`
   - best sampled `reached_wave_63` window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000003146776576.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7qhjnxa2/0000004999610368.bin`
 
 Comparison to `v25.2` (`frt9a1j4`):
 - `v25.4` supports the checkpoint-refresh hypothesis
@@ -5941,7 +5941,7 @@ Recommendation:
 Actual run:
 - `6gi2pyei`
 - local run log:
-  - [6gi2pyei.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/6gi2pyei.json)
+  - [6gi2pyei.json](../../pufferlib_4/logs/fight_caves/6gi2pyei.json)
 
 Status:
 - completed normally
@@ -5993,7 +5993,7 @@ Exact difference versus `v25.2`:
     - unchanged at `0.25 + 2.0 = 2.25`
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -6047,15 +6047,15 @@ Key progression points:
   - final: `wave_reached = 51.67`, `reached_wave_63 = 0.0`
 - nearest eval checkpoints to the important windows:
   - early breakout:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000000630194176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000000630194176.bin`
   - best sampled frontier window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000001888485376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000001888485376.bin`
   - post-peak decay:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000003146776576.bin`
   - late partial recovery:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000004352638976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000004352638976.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/6gi2pyei/0000004999610368.bin`
 
 Comparison to `v25.2` (`frt9a1j4`):
 - final `wave_reached: 51.67 vs 57.70`
@@ -6119,7 +6119,7 @@ Recommendation:
 Actual run:
 - `frt9a1j4`
 - local run log:
-  - [frt9a1j4.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/frt9a1j4.json)
+  - [frt9a1j4.json](../../pufferlib_4/logs/fight_caves/frt9a1j4.json)
 
 Status:
 - completed normally
@@ -6161,7 +6161,7 @@ Exact difference versus `v25.1`:
 - so Jad correct blocks now pay `0.5` more than the other prayer-critical NPCs
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_jad_prayer=2.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_no_threat_penalty=0.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_no_threat_penalty=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -6234,15 +6234,15 @@ Key progression points:
   - final: `wave_reached = 57.70`, `reached_wave_63 = 0.0588`
 - nearest eval checkpoints to the important windows:
   - early breakout:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000000630194176.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000000630194176.bin`
   - first `60+` window / best average-wave window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000001888485376.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000001888485376.bin`
   - best sampled Jad / clear window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000003146776576.bin`
   - late-decay window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000004352638976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000004352638976.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/frt9a1j4/0000004999610368.bin`
 
 Comparison to `v25.1` (`zyhv95mi`):
 - `wave_reached: 57.70 vs 60.16`
@@ -6326,7 +6326,7 @@ Recommendation for `v25.3`:
 Actual run:
 - `zyhv95mi`
 - local run log:
-  - [zyhv95mi.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/zyhv95mi.json)
+  - [zyhv95mi.json](../../pufferlib_4/logs/fight_caves/zyhv95mi.json)
 
 Status:
 - completed normally
@@ -6367,7 +6367,7 @@ Exact difference versus `v25`:
   - no new long-lived state/config surface added
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=0.0`, `shape_low_prayer_pot_reward=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -6435,15 +6435,15 @@ Key progression points:
   - final: `wave_reached = 60.16`, `reached_wave_63 = 0.1329`
 - nearest eval checkpoints to the important windows:
   - early breakout:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zyhv95mi/000000525336576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zyhv95mi/000000525336576.bin`
   - first `60+` / first `max_wave = 63` / highest `reached_wave_63` window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000001836056576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000001836056576.bin`
   - best average-wave plateau:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000003094347776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000003094347776.bin`
   - late stable plateau:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000004352638976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000004352638976.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/zyhv95mi/0000004999610368.bin`
 
 Comparison to `v25` (`yf24fz84`):
 - `wave_reached: 60.16 vs 45.12`
@@ -6543,7 +6543,7 @@ Suggested `v25.2` framing:
 Actual run:
 - `yf24fz84`
 - local run log:
-  - [yf24fz84.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/yf24fz84.json)
+  - [yf24fz84.json](../../pufferlib_4/logs/fight_caves/yf24fz84.json)
 
 Status:
 - completed normally
@@ -6589,7 +6589,7 @@ Important implementation note:
   feature unintentionally
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=0.0`, `shape_low_prayer_pot_reward=0.0`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_jad_heal_penalty=-0.1`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -6655,14 +6655,14 @@ Key progression points:
   - final: `wave_reached = 45.12`, `reached_wave_63 = 0.0`
 - nearest eval checkpoints to the important windows:
   - early breakout / first `55+` window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000000735051776.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000000735051776.bin`
   - peak window:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000001836056576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000001836056576.bin`
   - post-peak decay:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000003146776576.bin`
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000004352638976.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000003146776576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000004352638976.bin`
   - final:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000004999610368.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yf24fz84/0000004999610368.bin`
 
 Comparison to `v24` (`h2kpwkdk`):
 - `score: 0.0 vs 0.0`
@@ -6757,7 +6757,7 @@ Validation matrix:
 - same 8 jobs as `v24.s`
 - same config families
 - same warm-start checkpoint for nominal warm runs:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
 - validation budget:
   - `100,000,000` timesteps per run
 - W&B group:
@@ -6785,7 +6785,7 @@ Validation check:
 - passed
 - direct proof the warm-start path is now active:
   - training output printed:
-    - `Loaded weights from /home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+    - `Loaded weights from <repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
   - the warm and cold runs no longer collapse to the same metrics
 
 100M validation results:
@@ -7045,10 +7045,10 @@ Critical validity issue:
 - evidence in code:
   - `train.sh` threads `LOAD_MODEL_PATH` into CLI args
   - the slow Python backend in
-    [torch_pufferl.py](/home/joe/projects/runescape-rl/claude/pufferlib_4/pufferlib/torch_pufferl.py:499)
+    [torch_pufferl.py](../../pufferlib_4/pufferlib/torch_pufferl.py:499)
     does load `args['load_model_path']`
   - the compiled backend used by normal training creates its trainer in
-    [bindings.cu](/home/joe/projects/runescape-rl/claude/pufferlib_4/src/bindings.cu:308)
+    [bindings.cu](../../pufferlib_4/src/bindings.cu:308)
     and never reads `load_model_path`
   - the compiled backend only exposes `load_weights(...)` as a callable API;
     `_train` does not invoke it for train mode
@@ -7197,7 +7197,7 @@ Actual run:
 - W&B path:
   - `jordanbaileypmp-georgia-institute-of-technology/puffer4/h2kpwkdk`
 - local run log:
-  - [h2kpwkdk.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/h2kpwkdk.json)
+  - [h2kpwkdk.json](../../pufferlib_4/logs/fight_caves/h2kpwkdk.json)
 
 Status:
 - completed to the full `5B` budget
@@ -7214,13 +7214,13 @@ Config versus `v22.1`:
 - no intended code delta
 - no intended config delta
 - same warm-start source:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
 - same corrected `Masori (f) + TBow` combat model
 - same attack-ready penalty semantics as the original `v22.1`
 - no 1-tick flick block bonus
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=-0.01`, `shape_low_prayer_pot_reward=0.15`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `anneal_lr=0`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -7311,13 +7311,13 @@ Main read:
 
 Checkpoint notes:
 - early eval checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000001888485376.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000001888485376.bin`
 - frontier checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000003146776576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000003146776576.bin`
 - late stable checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000004614782976.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000004614782976.bin`
 - final checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000004999610368.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/h2kpwkdk/0000004999610368.bin`
 
 ---
 
@@ -7328,7 +7328,7 @@ Actual run:
 - W&B path:
   - `jordanbaileypmp-georgia-institute-of-technology/puffer4/fdzlxlwm`
 - local run log:
-  - [fdzlxlwm.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/fdzlxlwm.json)
+  - [fdzlxlwm.json](../../pufferlib_4/logs/fight_caves/fdzlxlwm.json)
 
 Status:
 - completed to the full `5B` budget
@@ -7350,14 +7350,14 @@ Config versus `v23`:
 - identical shaping values
 - identical runtime / PPO / policy config
 - identical warm-start source:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
 - only code-path delta:
   - `shape_one_tick_prayer_block_bonus` now fires only when a blocked
     1-tick prayer streak ends by switching to `OFF`
   - prayer-to-prayer transitions no longer qualify
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=0.0`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=-0.01`, `shape_low_prayer_pot_reward=0.15`, `shape_wrong_prayer_penalty=-1.25`, `shape_one_tick_prayer_block_bonus=0.1`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `anneal_lr=0`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -7477,13 +7477,13 @@ Main read:
 
 Checkpoint notes:
 - early eval checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000000630194176.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000000630194176.bin`
 - mid-run breakout checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000003146776576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000003146776576.bin`
 - late frontier checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000004352638976.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000004352638976.bin`
 - final checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000004999610368.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/fdzlxlwm/0000004999610368.bin`
 
 ---
 
@@ -7494,7 +7494,7 @@ Actual run:
 - W&B path:
   - `jordanbaileypmp-georgia-institute-of-technology/puffer4/yq3tbole`
 - local run log:
-  - [yq3tbole.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/yq3tbole.json)
+  - [yq3tbole.json](../../pufferlib_4/logs/fight_caves/yq3tbole.json)
 
 Status:
 - completed to the full `5B` budget
@@ -7517,7 +7517,7 @@ Config versus `v22.1`:
 - same viewer / reward-parity / analytics infrastructure
 - same corrected `Masori (f) + TBow` combat model
 - same warm-start source:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
 - same reward weights and shaping except:
   - `w_tick_penalty: -0.005 -> 0.0`
   - add `shape_one_tick_prayer_block_bonus = 0.1`
@@ -7534,7 +7534,7 @@ Config versus `v22.1`:
   - further combat-model changes
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=0.0`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=-0.01`, `shape_low_prayer_pot_reward=0.15`, `shape_wrong_prayer_penalty=-1.25`, `shape_one_tick_prayer_block_bonus=0.1`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `anneal_lr=0`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -7641,11 +7641,11 @@ Main read:
 
 Checkpoint notes:
 - first eval checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000001259339776.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000001259339776.bin`
 - best sampled-window checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000004352638976.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000004352638976.bin`
 - final checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000004999610368.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/yq3tbole/0000004999610368.bin`
 
 ---
 
@@ -7752,7 +7752,7 @@ Current planning stance:
 Actual run:
 - `721zk2cg`
 - local run log:
-  - [721zk2cg.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/721zk2cg.json)
+  - [721zk2cg.json](../../pufferlib_4/logs/fight_caves/721zk2cg.json)
 
 Status:
 - completed to the full `5B` budget
@@ -7786,10 +7786,10 @@ Config versus `v22`:
     - `shape_kiting_min_dist: 5 -> 7`
     - `shape_kiting_max_dist: 7 -> 10`
   - warm-start from:
-    - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
+    - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000001311768576.bin`, corrected `Masori (f) + TBow` combat model, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.7`, `w_attack_attempt=0.2`, `w_damage_taken=-0.6`, `w_npc_kill=3.5`, `w_wave_clear=15.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.25`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_low_prayer_pot_threshold=0.0`, `shape_low_prayer_no_pot_penalty=-0.01`, `shape_low_prayer_pot_reward=0.15`, `shape_wrong_prayer_penalty=-1.25`, `shape_npc_specific_prayer_bonus=1.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=7`, `shape_kiting_max_dist=10`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=5_000_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -7851,7 +7851,7 @@ Key progression points:
   - `4.127B`: `wave_reached = 62.3`, `episode_return = 32340.6`
   - `4.627B`: `wave_reached = 62.5`, `episode_return = 32827.5`
 - nearest eval checkpoint to the best sampled window:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/721zk2cg/0000004614782976.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/721zk2cg/0000004614782976.bin`
 
 Comparison to `v22` (`7vuw9jy8`):
 - `score: 0.0217 vs 0.0`
@@ -7999,7 +7999,7 @@ Actual run:
 - W&B run name:
   - `good-planet-129`
 - local run log:
-  - [7vuw9jy8.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/7vuw9jy8.json)
+  - [7vuw9jy8.json](../../pufferlib_4/logs/fight_caves/7vuw9jy8.json)
 
 Status:
 - completed to the full `5B` budget
@@ -8121,7 +8121,7 @@ Key progression points:
   - sampled `wave_reached = 25.6`
   - sampled `episode_return = 3793.0`
 - nearest eval checkpoint to the best sampled average-wave window:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/7vuw9jy8/0000001012924416.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/7vuw9jy8/0000001012924416.bin`
 
 Comparison to `v21.2` (`u58coupx`):
 - `score: 0.0 vs 0.0`
@@ -8245,7 +8245,7 @@ Actual run id:
 - W&B run name:
   - `fallen-water-102`
 - local run log:
-  - [j63y66ed.json](/home/joe/projects/runescape-rl/claude/v_tmp2/pufferlib_4/logs/fight_caves/j63y66ed.json)
+  - [j63y66ed.json](../../v_tmp2/pufferlib_4/logs/fight_caves/j63y66ed.json)
 
 Mainline direction:
 - keep the prayer/combat backend with locked-prayer hit resolution
@@ -8278,7 +8278,7 @@ Backend / config provenance:
 - this run used the `v_tmp2` backend path, not the old pre-prayer baseline
 - evidence:
   - the local log artifact lives under the `v_tmp2` PufferLib tree:
-    [j63y66ed.json](/home/joe/projects/runescape-rl/claude/v_tmp2/pufferlib_4/logs/fight_caves/j63y66ed.json)
+    [j63y66ed.json](../../v_tmp2/pufferlib_4/logs/fight_caves/j63y66ed.json)
   - that artifact records the exact unique `v_tmp2.1` values:
     - `w_correct_danger_prayer = 0.25`
     - `shape_wrong_prayer_penalty = -1.25`
@@ -8405,7 +8405,7 @@ Actual run:
 - W&B run name:
   - `light-sky-128`
 - local run log:
-  - [u58coupx.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/u58coupx.json)
+  - [u58coupx.json](../../pufferlib_4/logs/fight_caves/u58coupx.json)
 
 Status:
 - completed normally
@@ -8498,7 +8498,7 @@ Key progression points:
 - after that peak, the run decayed into the mid-to-high `40s` / low `50s` and
   finished well below `v21`
 - nearest eval checkpoint to the peak window:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/u58coupx/0000000997195776.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/u58coupx/0000000997195776.bin`
 
 Comparison to `v21` (`v4ekkk3z`):
 - `score: 0.0 vs 0.0`
@@ -8621,7 +8621,7 @@ Actual run:
 - W&B run name:
   - `fanciful-disco-127`
 - local run log:
-  - [nxj1iw0b.json](/home/joe/projects/runescape-rl/claude/pufferlib_4/logs/fight_caves/nxj1iw0b.json)
+  - [nxj1iw0b.json](../../pufferlib_4/logs/fight_caves/nxj1iw0b.json)
 
 Status:
 - completed normally
@@ -8962,7 +8962,7 @@ Recommendations:
 - use the new explicit `reached_wave_63`, `jad_kill_rate`, and
   `cave_complete_rate` metrics for all future Jad-facing runs
 - evaluate the best `v21` checkpoint window, not just the final checkpoint:
-  - `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/v4ekkk3z/0000003251634176.bin`
+  - `<repo-root>/pufferlib_4/checkpoints/fight_caves/v4ekkk3z/0000003251634176.bin`
 - if follow-up tuning is needed after the anneal decouple, focus on:
   - late-wave damage leakage
   - Tok-Xil / Ket-Zek melee exposure
@@ -9632,8 +9632,8 @@ Re-implementing snapshot-timed reward later:
 - the reverted implementation was small and localized
 - to restore it:
   - add a helper like `fc_note_prayer_snapshot(...)` in `fc_combat.[ch]`
-  - call it in [fc_npc.c](/home/joe/projects/runescape-rl/claude/runescape-rl/fc-core/src/fc_npc.c) immediately after `queued->prayer_snapshot = p->prayer` for immediate-snapshot attacks
-  - call it in [fc_combat.c](/home/joe/projects/runescape-rl/claude/runescape-rl/fc-core/src/fc_combat.c) when delayed snapshots fill at `state->tick >= h->prayer_lock_tick`
+  - call it in [fc_npc.c](../fc-core/src/fc_npc.c) immediately after `queued->prayer_snapshot = p->prayer` for immediate-snapshot attacks
+  - call it in [fc_combat.c](../fc-core/src/fc_combat.c) when delayed snapshots fill at `state->tick >= h->prayer_lock_tick`
   - remove the resolve-time `correct_danger_prayer` / `wrong_danger_prayer` flag writes from the later hit-resolution block
   - if desired, broaden the generic signal to include melee there as `v20` / `v20.1` did
 
@@ -10065,7 +10065,7 @@ Naming note:
 - warm-start source run id:
   - `8u6flr5y` (`v19.1`)
 - warm-start checkpoint used:
-  - [0000000263192576.bin](/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin)
+  - [0000000263192576.bin](../../pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin)
 
 Mainline direction:
 - checkpoint transfer run
@@ -10114,7 +10114,7 @@ What changes versus `v19.1`:
 - all curriculum buckets disabled
 
 Exact active config:
-- run setup: `load_model_path=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin`, no curriculum, `policy_obs=106`, `puffer_obs=142`
+- run setup: `load_model_path=<repo-root>/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin`, no curriculum, `policy_obs=106`, `puffer_obs=142`
 - reward weights: `w_damage_dealt=0.5`, `w_attack_attempt=0.1`, `w_damage_taken=-0.6`, `w_npc_kill=3.0`, `w_wave_clear=10.0`, `w_jad_damage=2.0`, `w_jad_kill=50.0`, `w_player_death=-20.0`, `w_cave_complete=100.0`, `w_correct_danger_prayer=0.5`, `w_invalid_action=-0.1`, `w_tick_penalty=-0.005`
 - shaping: `shape_food_full_waste_penalty=-6.5`, `shape_food_waste_scale=-1.2`, `shape_food_safe_hp_threshold=1.0`, `shape_pot_full_waste_penalty=-6.5`, `shape_pot_waste_scale=-1.2`, `shape_pot_safe_prayer_threshold=1.0`, `shape_wrong_prayer_penalty=-1.0`, `shape_npc_specific_prayer_bonus=2.5`, `shape_npc_melee_penalty=-0.3`, `shape_wasted_attack_penalty=-0.1`, `shape_wave_stall_start=500`, `shape_wave_stall_base_penalty=-0.5`, `shape_wave_stall_ramp_interval=50`, `shape_wave_stall_cap=-2.0`, `shape_not_attacking_grace_ticks=2`, `shape_not_attacking_penalty=-0.01`, `shape_kiting_reward=1.0`, `shape_kiting_min_dist=5`, `shape_kiting_max_dist=7`, `shape_unnecessary_prayer_penalty=-0.2`, `shape_resource_threat_window=2`
 - runtime: `total_agents=4096`, `num_buffers=2`, `total_timesteps=2_500_000_000`, `learning_rate=0.0003`, `gamma=0.999`, `gae_lambda=0.95`, `clip_coef=0.2`, `vf_coef=0.5`, `ent_coef=0.01`, `max_grad_norm=0.5`, `horizon=256`, `minibatch_size=4096`, `hidden_size=256`, `num_layers=2`
@@ -10377,7 +10377,7 @@ Checkpoint choice:
 - warm-start source run id:
   - `8u6flr5y` (`v19.1`)
 - warm-start from:
-  - [0000000263192576.bin](/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin)
+  - [0000000263192576.bin](../../pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin)
 - rationale:
   - this sits in the first strong `v19.1` peak window (`~237M-367M`)
   - it captures the early late-wave competence before the long-run regression
@@ -10389,7 +10389,7 @@ Run / trainer shape:
 - no curriculum buckets
 - same PPO / reward recipe as `v19`
 - default launch path:
-  - `cd /home/joe/projects/runescape-rl/claude/runescape-rl && FORCE_BACKEND_REBUILD=1 LOAD_MODEL_PATH=/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin bash train.sh`
+  - `cd <repo-root>/runescape-rl && FORCE_BACKEND_REBUILD=1 LOAD_MODEL_PATH=<repo-root>/pufferlib_4/checkpoints/fight_caves/8u6flr5y/0000000263192576.bin bash train.sh`
 
 What stays the same as `v19`:
 - `learning_rate = 0.0003`
@@ -10562,7 +10562,7 @@ Run / trainer shape:
   - `curriculum_pct = 1.0`
   - all other curriculum buckets disabled
 - default launch path:
-  - `cd /home/joe/projects/runescape-rl/claude/runescape-rl && bash train.sh`
+  - `cd <repo-root>/runescape-rl && bash train.sh`
 
 Key differences from `v19`:
 - same PPO settings
@@ -10867,7 +10867,7 @@ Run / trainer shape:
 - no `[sweep]` section
 - no curriculum buckets
 - default launch path:
-  - `cd /home/joe/projects/runescape-rl/claude/runescape-rl && bash train.sh`
+  - `cd <repo-root>/runescape-rl && bash train.sh`
 
 Key PPO / vectorization choices:
 - copy the `v1_retro` base:
@@ -11666,7 +11666,7 @@ Why these code changes were necessary:
 
 Chosen warm-start checkpoint:
 - default `LOAD_MODEL_PATH` is
-  `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/xm6i52ta/0000005977931776.bin`
+  `<repo-root>/pufferlib_4/checkpoints/fight_caves/xm6i52ta/0000005977931776.bin`
 - this is the `~5.98B` `v18.1` checkpoint
 - rationale:
   - it sits in one of the strongest average-wave / return windows from
@@ -12087,7 +12087,7 @@ Core intent:
 
 Chosen warm-start checkpoint:
 - default `LOAD_MODEL_PATH` is
-  `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/xm6i52ta/0000002203058176.bin`
+  `<repo-root>/pufferlib_4/checkpoints/fight_caves/xm6i52ta/0000002203058176.bin`
 - this is the `~2.20B` `v18.1` checkpoint, chosen because it sits in the
   early strong plateau window and aligns with one of the best sampled
   `v18.1` return regions
@@ -12982,7 +12982,7 @@ Secondary recommendation:
 
 Changes from `v17.1`:
 
-This is the scratch recovery run that kept the current `claude` pruned
+This is the scratch recovery run that kept the current `fight-caves-rl` pruned
 backend/obs contract, but restored the stronger scratch-learning recipe.
 
 Config / training changes from `v17.1`:
@@ -13305,7 +13305,7 @@ Key takeaway:
 - The real regression source in `v17` / `v17.1` was the weakened PPO
   profile and reward mix, not the observation contract itself.
 - `v18` should now replace `ge5sma5y` as the clean scratch baseline on
-  the current `claude` codebase.
+  the current `fight-caves-rl` codebase.
 
 Recommendation for next step:
 - treat `lxttb7uo` as the new baseline run
@@ -13321,7 +13321,7 @@ Recommendation for next step:
 
 Changes from v17:
 
-This is the clean control run for the current `claude` v17 package.
+This is the clean control run for the current `fight-caves-rl` v17 package.
 It keeps the new observation surface, reward weights, threat-aware
 resource shaping, capped stall penalty, and PPO hyperparameters from
 `v17`, but removes the two confounders that made `mv0snohb` hard to
@@ -13628,8 +13628,8 @@ But revert the training / reward recipe closer to `ge5sma5y`:
 Why this is the best next step:
 - it isolates whether the failure came from the current `v17` reward /
   PPO recipe rather than the new observation contract
-- it preserves the likely-good `claude` threat representation work
-- it restores the only scratch recipe on current `claude` that has
+- it preserves the likely-good `fight-caves-rl` threat representation work
+- it restores the only scratch recipe on current `fight-caves-rl` that has
   actually proven it can reach the wave-29 frontier
 
 What not to do next:
@@ -13643,13 +13643,13 @@ What not to do next:
 
 Changes from v16.2a:
 
-Switch back to the staged v17 config on the current `claude` codebase
+Switch back to the staged v17 config on the current `fight-caves-rl` codebase
 and warm-start from the best `v16.2a` bridge checkpoint.
 
 Warm-start source:
 - Run: `ge5sma5y`
 - Recommended checkpoint:
-  `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
+  `<repo-root>/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
 
 Config / training changes:
 - total_timesteps: `1.5B` bridge run → **5B**
@@ -13758,7 +13758,7 @@ minibatch_size=4096, total_agents=4096, hidden_size=256,
 num_layers=2. total_timesteps=5B, lr=0.00025, anneal_lr=1.
 
 Why this setup:
-- `v16.2a` on `claude` proved the stack is working and reached the
+- `v16.2a` on `fight-caves-rl` proved the stack is working and reached the
   wave 29 frontier cleanly by `~1.2B`.
 - The best saved `v16.2a` checkpoint sits on the `29.2` plateau,
   before the slight fade in the final bridge-run segment.
@@ -13769,7 +13769,7 @@ Why this setup:
 
 Results (5B steps, ~42.0min, wandb run `mv0snohb`):
 - Warm-started from:
-  `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
+  `<repo-root>/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
 - SPS: **2.03M**
 - Wave reached: **25.01** avg
 - Max wave: **32**
@@ -13924,17 +13924,17 @@ would test are:
 
 Changes from v16.2:
 
-This was a `v16.2-style` bridge run on the current `claude` codebase,
+This was a `v16.2-style` bridge run on the current `fight-caves-rl` codebase,
 used for two purposes:
-- validate that the isolated `claude` training stack runs end-to-end
+- validate that the isolated `fight-caves-rl` training stack runs end-to-end
 - produce a fresh warm-start checkpoint compatible with the new backend
 
 Important caveat:
 - This is not a pure legacy reproduction. PPO hyperparameters and the
   dense reward intent stayed `v16.2-style`, but the runtime surface was
-  the current `claude` implementation.
+  the current `fight-caves-rl` implementation.
 
-`claude` backend / env changes relative to old `rqvxfqmq`:
+`fight-caves-rl` backend / env changes relative to old `rqvxfqmq`:
 - `effective_style_now` observation replaced the old misleading
   per-NPC base attack-style feature
 - incoming-hit timeline summaries were added to policy observation
@@ -13943,7 +13943,7 @@ Important caveat:
 - reward shaping moved out of hardcoded logic into config-backed
   `shape_*` controls
 - local PufferLib backend build/runtime paths were isolated inside
-  `claude`, and the env-core reward path was optimized
+  `fight-caves-rl`, and the env-core reward path was optimized
 
 Bridge-run config changes:
 - total_timesteps: `20B` → **1.5B**
@@ -14038,7 +14038,7 @@ Matched comparison vs old `v16.2` (`rqvxfqmq`) near `1.5B`:
   clipfrac `0.307`, value loss `87.1`
 
 What improved:
-- Faster learning curve on `claude`:
+- Faster learning curve on `fight-caves-rl`:
   - wave `20`: `551.6M` vs `780.1M`
   - wave `25`: `729.8M` vs `992.0M`
   - wave `28`: `962.6M` vs `992.0M`
@@ -14052,12 +14052,12 @@ What regressed or stayed weaker:
 - Slightly shorter episodes and no max-wave `32` spike
 
 Diagnosis:
-- The `claude` stack is healthy enough to use for the real v17 run.
+- The `fight-caves-rl` stack is healthy enough to use for the real v17 run.
 - The bridge run did not prove a giant average-wave improvement over
   old `v16.2` by `1.5B`, but it did show a much earlier climb to the
   frontier and a cleaner, less destructive optimization profile.
 - Best warm-start checkpoint is on the `29.2` plateau:
-  `/home/joe/projects/runescape-rl/claude/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
+  `<repo-root>/pufferlib_4/checkpoints/fight_caves/ge5sma5y/0000001364197376.bin`
 
 ---
 
