@@ -43,8 +43,8 @@ Training a reinforcement learning agent to complete the Old School RuneScape Fig
 ### Clone & Setup
 
 ```bash
-git clone https://github.com/jordanbailey00/FightCaves-RL.git
-cd FightCaves-RL/runescape-rl
+git clone https://github.com/jordanbailey00/fight-caves-rl.git
+cd fight-caves-rl/runescape-rl
 
 # Create virtual environment
 python3 -m venv .venv
