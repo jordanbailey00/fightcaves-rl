@@ -2,7 +2,6 @@ changelog.md export-ignore
 handoff.md export-ignore
 
 runescape-rl/DESIGN.md export-ignore
-runescape-rl/README.md export-ignore
 runescape-rl/analyze_run.sh export-ignore
 runescape-rl/docs export-ignore
 runescape-rl/demo-env export-ignore

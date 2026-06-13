@@ -45,6 +45,284 @@ attribution-matrix style used from v28.5 onward.
 
 ---
 
+## v36.2 (2026-06-12, completed - Bowfa loadout diagnostic - `t2rtfitt`)
+
+Loadout/backend experiment from v36 (`jta3lkgx`): keep the same v36
+no-consumables config, hparams, observation shape, action heads, reward
+weights, and training length, but replace the loadout-B Twisted bow setup
+with Bow of faerdhinen and no ammunition. The run was launched with tag
+`v36-bowfa`.
+
+**Bottom line.** Bowfa made the early and middle cave much easier, but it
+was a clear regression on the objective that matters. Peak
+`jad_kill_rate = 0.527` @ 1.598B, well below v36's 0.808 @ 2.600B. Best
+saved checkpoint fell from 0.691 to 0.449. Final `jad_kill_rate` collapsed
+to 0.000 even while final `reached_wave_63` improved from 0.685 to 0.964
+and final `wave_reached` improved from 57.58 to 62.86. This is not an
+early-wave failure; it is a Jad-closure failure after faster cave access.
+
+The key lesson is that Bowfa is **not** a direct DPS buff over the previous
+TBow backend against Ket-Zek/Jad. Bowfa has better visible flat ranged
+attack/strength and a 4-tick cooldown, but the old TBow backend applied
+magic-level scaling. That made TBow substantially stronger against the
+high-magic late targets even though Bowfa is stronger against low/mid cave
+NPCs.
+
+### Config diff vs v36
+
+No W&B config diff. The `[env]`, `[vec]`, `[train]`, `[policy]`, and
+`[sweep]` values match v36. This was a code/loadout swap, not a reward or
+hparam run.
+
+### Backend/loadout diff vs v36
+
+| key | v36 | **v36.2** |
+|---|---:|---:|
+| loadout-B weapon | Twisted bow + dragon arrows | **Bow of faerdhinen** |
+| `weapon_kind` | `FC_WEAPON_TWISTED_BOW` | `FC_WEAPON_BOW_OF_FAERDHINEN` |
+| `weapon_speed` | 5 | **4** |
+| `weapon_range` | 10 | 10 |
+| `ranged_atk` | 215 | **273** |
+| `ranged_str` | 99 | **125** |
+| `def_magic` | 150 | **152** |
+| `ammo` | 50000 | **0** |
+
+Backend changes paired with the run:
+
+- `fc-core/include/fc_player_init.h`: loadout B now uses Bowfa stats and
+  built-in/no-ammo semantics.
+- `fc-core/src/fc_tick.c`: player attacks are allowed for Bowfa even when
+  `ammo_count == 0`; ammo is decremented only for ammo-using weapons.
+- `fc-core/src/fc_combat.c`: removed Twisted-bow-specific target magic
+  scaling and uses the normal ranged attack/max-hit formula.
+- Viewer/assets changes updated the displayed equipment and item sprites,
+  but the training-relevant behavioral changes are the three core files
+  above.
+
+### Exact active config
+
+```ini
+[env]
+w_damage_dealt = 0.9
+w_damage_taken = -1.9
+w_npc_kill = 3.5
+w_wave_clear = 15.0
+w_jad_kill = 2000.0
+w_player_death = -11.0
+w_correct_jad_prayer = 1.5
+w_correct_danger_prayer = 0.25
+w_invalid_action = -0.1
+w_tick_penalty = -0.005
+shape_food_waste_scale = -1.2
+shape_pot_waste_scale = -1.2
+shape_wrong_prayer_penalty = -0.3
+shape_npc_melee_penalty = -0.8
+shape_wasted_attack_penalty = -0.1
+shape_kiting_reward = 2.2
+shape_kiting_min_dist = 2
+shape_kiting_max_dist = 10
+shape_safespot_attack_reward = 1.5
+shape_unnecessary_prayer_penalty = -0.2
+shape_wave_stall_start = 1400
+shape_wave_stall_ramp_interval = 150
+shape_wave_stall_base_penalty = -0.5
+shape_wave_stall_cap = -2.0
+shape_resource_threat_window = 2
+shape_jad_heal_penalty = -0.3
+initial_sharks = 0
+initial_prayer_doses = 0
+obs_ablate_npc_distance = 0
+obs_ablate_incoming_aggregates = 1
+obs_ablate_npc_valid = 0
+
+[vec]
+total_agents = 4096
+num_buffers = 2
+num_threads = 16
+
+[train]
+total_timesteps = 3_000_000_000
+anneal_lr = 0
+learning_rate = 0.0009000000000000007
+ent_coef = 0.02423374579539897
+gamma = 0.9963272487242703
+gae_lambda = 0.96405274026941
+clip_coef = 0.17830599245832296
+vf_coef = 1
+vf_clip_coef = 0.15124043205980495
+max_grad_norm = 0.25
+horizon = 256
+minibatch_size = 4096
+replay_ratio = 1.567733336432473
+vtrace_rho_clip = 0.5
+vtrace_c_clip = 0.5037274754757021
+prio_alpha = 0.9682355928752012
+prio_beta0 = 0
+beta1 = 0.95
+beta2 = 0.9995810484472892
+eps = 1e-10
+seed = 42
+
+[policy]
+hidden_size = 256
+num_layers = 3
+expansion_factor = 1
+
+[sweep]
+metric = jad_kill_rate
+```
+
+### Results - v36.2 vs v36
+
+| metric | v36 TBow (`jta3lkgx`) | **v36.2 Bowfa (`t2rtfitt`)** | Delta |
+|---|---:|---:|---:|
+| peak `jad_kill_rate` | **0.808 @ 2.600B** | 0.527 @ 1.598B | -0.280 |
+| best 250M mean `jad_kill_rate` | **0.611** | 0.320 | -0.292 |
+| last-10% mean `jad_kill_rate` | **0.565** | 0.014 | -0.551 |
+| best saved checkpoint `jad_kill_rate` | **0.691 @ 1.417B** | 0.449 @ 1.679B | -0.243 |
+| final `jad_kill_rate` | **0.432** | 0.000 | -0.432 |
+| final `reached_wave_63` | 0.685 | **0.964** | +0.279 |
+| final `wave_reached` | 57.58 | **62.86** | +5.28 |
+| final `episode_length` | 7,929 | **5,535** | -2,395 |
+| final `dmg_taken_avg` | **1,656** | 2,743 | +1,087 |
+| final `correct_prayer` | **1,801** | 1,051 | -750 |
+| final `wrong_prayer_hits` | **17.65** | 40.15 | +22.49 |
+| final `no_prayer_hits` | **26.19** | 31.91 | +5.71 |
+| final `prayer_switches` | **4,905** | 2,231 | -2,675 |
+| final `pots_used` | 0.00 | 0.00 | 0.00 |
+| final `food_eaten` | 0.00 | 0.00 | 0.00 |
+| final `rwd_jad_heal_total` | **-132.32** | -175.25 | -42.93 |
+| final `rwd_wave_stall_total` | -343.99 | **-128.87** | +215.12 |
+| final `rwd_invalid_action_total` | -321.64 | **-241.23** | +80.41 |
+
+The better final wave-stall total is misleading: v36.2 dies much more
+often after reaching Jad, so it spends less time in long stalled Jad states.
+It is not solving the Jad phase better.
+
+### Reward-channel breakdown - final
+
+| channel | v36 | **v36.2** | Delta |
+|---|---:|---:|---:|
+| `damage_dealt` | 1538.37 | 1368.27 | -170.10 |
+| `damage_taken` | -79.30 | -149.08 | -69.78 |
+| `npc_kill` | 848.75 | **947.75** | +99.00 |
+| `wave_clear` | 24990.74 | **29064.14** | +4073.40 |
+| `jad_kill` | **864.20** | 0.00 | -864.20 |
+| `player_death` | -6.25 | -11.00 | -4.75 |
+| `food_waste` | 0.00 | 0.00 | 0.00 |
+| `pot_waste` | 0.00 | 0.00 | 0.00 |
+| `correct_jad_prayer` | 138.36 | **225.49** | +87.13 |
+| `correct_danger_prayer` | **396.88** | 220.21 | -176.67 |
+| `wrong_danger_prayer` | -11.96 | -19.88 | -7.92 |
+| `unnecessary_prayer` | -29.56 | **-15.69** | +13.86 |
+| `melee_pressure` | -19.34 | -24.39 | -5.05 |
+| `wasted_attack` | -147.49 | **-121.31** | +26.18 |
+| `kiting` | **2098.69** | 1735.96 | -362.73 |
+| `safespot_attack` | **2356.81** | 2016.93 | -339.88 |
+| `wave_stall` | -343.99 | **-128.87** | +215.12 |
+| `jad_heal` | **-132.32** | -175.25 | -42.93 |
+| `invalid_action` | -321.64 | **-241.23** | +80.41 |
+| `tick_penalty` | -39.46 | **-27.22** | +12.25 |
+
+### Trajectory
+
+Selected trajectory points:
+
+| step | `jad_kill_rate` | `reached_wave_63` | `wave_reached` | damage taken | heal total | stall total |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.500B | 0.015 | 0.824 | 62.00 | 4,082 | -189.2 | -682.8 |
+| 0.750B | 0.382 | 0.782 | 61.09 | 3,504 | -161.8 | -1045.6 |
+| 1.000B | 0.011 | 0.957 | 62.75 | 3,194 | -127.9 | -400.5 |
+| 1.501B | 0.211 | 0.966 | 62.87 | 2,644 | -163.1 | -395.8 |
+| 1.750B | 0.294 | 0.948 | 62.78 | 2,729 | -147.7 | -176.0 |
+| 2.250B | 0.459 | 0.962 | 62.73 | 2,115 | -169.6 | -385.3 |
+| 2.750B | 0.032 | 0.968 | 62.90 | 2,893 | -306.5 | -1444.6 |
+| 3.000B | 0.000 | 0.964 | 62.86 | 2,743 | -175.3 | -128.9 |
+
+Top raw `jad_kill_rate` points:
+
+| step | `jad_kill_rate` | `reached_wave_63` | `wave_reached` | heal total | stall total |
+|---:|---:|---:|---:|---:|---:|
+| 1.598B | **0.527** | 0.964 | 62.76 | -142.91 | -220.62 |
+| 2.221B | **0.527** | 0.989 | 62.93 | -178.10 | -542.19 |
+| 2.414B | 0.517 | 0.966 | 62.83 | -139.40 | -102.51 |
+| 1.601B | 0.510 | 0.967 | 62.73 | -152.08 | -256.45 |
+| 1.607B | 0.505 | 0.974 | 62.87 | -179.90 | -525.03 |
+
+Best saved checkpoint:
+
+```text
+<repo-root>/pufferlib_4/checkpoints/fight_caves/t2rtfitt/0000001678770176.bin
+```
+
+`jad_kill_rate = 0.449`, `reached_wave_63 = 0.976`, `wave_reached = 62.94`.
+
+### Why this did worse than TBow
+
+The run is worse because the swap changed the damage distribution, not just
+the agent's raw power.
+
+- **Bowfa buffs low/mid waves.** The final run clears more waves and reaches
+  Jad far more often: `wave_clear_total` +4073 and `reached_wave_63`
+  +0.279. This is exactly what we would expect from higher flat ranged
+  attack/strength against low-magic NPCs.
+- **TBow was still stronger against the late high-magic targets.** Under
+  the old backend formulas, rough per-attack numbers against Jad were:
+  TBow max hit about 58 HP at 62.6% hit chance on a 5-tick cycle; Bowfa max
+  hit about 32 HP at 56.6% on a 4-tick cycle. That is roughly 3.63 HP/tick
+  for TBow vs 2.26 HP/tick for Bowfa before accounting for movement and
+  target switching. Ket-Zek has the same direction: TBow's scaling beats
+  Bowfa's flat stats.
+- **Longer/weaker Jad closure exposes prayer mistakes.** Final
+  `wrong_prayer_hits` more than doubled (17.65 -> 40.15), `no_prayer_hits`
+  increased, `correct_prayer` fell by ~750, and every final-eval episode
+  ended in player death (`rwd_player_death_fires = 1.0` in the summary).
+- **The policy learned fast cave access before stable Jad technique.** By
+  0.5B it already reached wave 63 in 82% of episodes, long before v36 did,
+  but Jad kill rate remained unstable and collapsed late.
+- **The timing distribution changed.** Weapon cooldown moved from 5 to 4
+  ticks. That is a legitimate buff in isolation, but it also changes attack
+  timer observations, attack-ready cadence, and reward timing. This makes
+  the run not a pure "same task but better weapon" comparison.
+
+### Diagnosis
+
+v36.2 is useful evidence that the no-supplies task is very sensitive to the
+late-wave damage model. Bowfa improves access to Jad, but the previous TBow
+implementation was carrying a lot of Jad/Ket-Zek closure through magic-level
+scaling. Removing that scaling makes the final phase longer and less
+forgiving, and the no-supplies policy does not survive the extra prayer
+burden.
+
+This also explains the apparently contradictory metrics: higher
+`reached_wave_63` plus zero final `jad_kill_rate` means the agent gets to
+the boss fight reliably and then dies there.
+
+### Recommendation
+
+Do not treat Bowfa as a drop-in upgrade over the existing TBow sim for SOTA
+comparison. For an actual Bowfa track, evaluate the best checkpoint around
+1.68B, then train with a Jad/healer curriculum or add more style-aware
+prayer/Jad-closure shaping. If the intended experiment is "same task but
+strictly stronger player DPS", keep TBow or explicitly model the intended
+late-target DPS rather than assuming Bowfa's flat item stats dominate the
+old TBow magic scaling.
+
+### Artifacts
+
+- W&B run: `t2rtfitt`
+- W&B tag: `v36-bowfa`
+- Local W&B dir:
+  `pufferlib_4/wandb/wandb/run-20260612_193231-t2rtfitt/`
+- Local log:
+  `pufferlib_4/logs/fight_caves/t2rtfitt.json`
+- Checkpoints:
+  `pufferlib_4/checkpoints/fight_caves/t2rtfitt/`
+- Best saved checkpoint:
+  `0000001678770176.bin`
+
+---
+
 ## v36 (2026-05-18, completed - no food/no pots diagnostic - `jta3lkgx`)
 
 Single-variable experiment from v35 (`8z4lqldl`): keep the same backend,
