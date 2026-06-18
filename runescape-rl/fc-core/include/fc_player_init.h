@@ -7,7 +7,7 @@
  * fc_player_init.h — Player skill levels, equipment, and consumable config.
  *
  * SINGLE FILE for all player configuration. Change skills, gear,
- * consumables here — both training-env and demo-env use this.
+ * consumables here — both fc-training and fc-viewer use this.
  *
  * Training uses FC_ACTIVE_LOADOUT (set below) at compile time.
  * The viewer can switch loadouts at runtime via the loadout dropdown.

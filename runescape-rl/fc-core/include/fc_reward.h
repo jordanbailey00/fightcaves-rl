@@ -85,7 +85,7 @@ typedef struct {
 } FcRewardBreakdown;
 
 /* Reward channel enumeration — one slot per named field in FcRewardBreakdown above,
- * excluding `raw` and `total`. Used by analytics code in training-env to accumulate
+ * excluding `raw` and `total`. Used by analytics code in fc-training to accumulate
  * per-channel sums and fire counts per episode (see g_sum_rwd_* in binding.c). */
 typedef enum {
     FC_CH_DAMAGE_DEALT = 0,

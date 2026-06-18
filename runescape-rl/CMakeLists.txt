@@ -14,8 +14,8 @@ endif()
 # Shared Fight Caves backend
 add_subdirectory(fc-core)
 
-# Demo environment (viewer + backend)
-add_subdirectory(demo-env)
+# Fight Caves viewer and tests
+add_subdirectory(fc-viewer)
 
-# Training environment (headless backend for RL)
-add_subdirectory(training-env)
+# Fight Caves training backend
+add_subdirectory(fc-training)

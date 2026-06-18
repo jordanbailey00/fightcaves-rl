@@ -38,7 +38,7 @@ Training a reinforcement learning agent to complete the Old School RuneScape Fig
 - NVIDIA GPU with CUDA 12.8+ and cuDNN 9+
 - CMake 3.20+
 - GCC/G++
-- Raylib 5.5 (vendored in `demo-env/raylib/`)
+- Raylib 5.5 (vendored in `fc-viewer/raylib/`)
 
 ### Clone & Setup
 
@@ -61,13 +61,13 @@ Build and launch the interactive Raylib viewer:
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
-./build/demo-env/fc_viewer
+./build/fc-viewer/fc_viewer
 ```
 
 From the repo root checkout, the viewer path is:
 
 ```bash
-./runescape-rl/build/demo-env/fc_viewer
+./runescape-rl/build/fc-viewer/fc_viewer
 ```
 
 The viewer uses the same `fc-core` backend as training, with cache-derived Fight Caves terrain,
@@ -135,7 +135,7 @@ Watch a trained policy play in the viewer:
 
 ```bash
 source .venv/bin/activate
-python3 demo-env/eval_viewer.py --ckpt /path/to/checkpoint.bin
+python3 fc-viewer/eval_viewer.py --ckpt /path/to/checkpoint.bin
 ```
 
 ---
@@ -148,23 +148,23 @@ python3 demo-env/eval_viewer.py --ckpt /path/to/checkpoint.bin
 | `bash train.sh sweep` | Run Protein hyperparameter sweep |
 | `bash train.sh --no-wandb` | Train without W&B logging |
 | `LOAD_MODEL_PATH=<path> bash train.sh` | Warm-start from checkpoint |
-| `./build/demo-env/fc_viewer` | Launch playable viewer |
-| `python3 demo-env/eval_viewer.py --ckpt <path>` | Replay trained policy |
+| `./build/fc-viewer/fc_viewer` | Launch playable viewer |
+| `python3 fc-viewer/eval_viewer.py --ckpt <path>` | Replay trained policy |
 | `bash analyze_run.sh <run_id>` | Quick W&B run analysis |
 
 ---
 
 ## Architecture
 
-<!-- TODO: Simple block diagram showing fc-core -> training-env -> PufferLib and fc-core -> demo-env -> Raylib -->
+<!-- TODO: Simple block diagram showing fc-core -> fc-training -> PufferLib and fc-core -> fc-viewer -> Raylib -->
 
 ```
 runescape-rl/
 ├── fc-core/           Deterministic C game simulation
 │   ├── include/       Headers (types, contracts, combat, reward, API)
 │   └── src/           Implementation (tick, state, combat, NPC, wave, prayer)
-├── training-env/      PufferLib 4.0 adapter (binding.c, fight_caves.h)
-├── demo-env/          Raylib 3D viewer + eval tooling
+├── fc-training/      PufferLib 4.0 adapter (binding.c, fight_caves.h)
+├── fc-viewer/          Raylib 3D viewer + eval tooling
 │   ├── src/           Viewer, debug overlay, asset loaders
 │   └── assets/        Collision map, prayer/item sprites
 ├── config/            Training config (fight_caves.ini)
@@ -173,9 +173,9 @@ runescape-rl/
 
 **Backend (`fc-core/`):** Pure C, zero allocations per tick. Deterministic game simulation — combat, pathfinding, prayer, waves, NPC AI. Both the viewer and trainer call into the same `fc_step()` function.
 
-**Training (`training-env/`):** PufferLib 4.0 wrapper. Compiles the C backend into a shared library with CUDA-accelerated vectorized environments. 4096 parallel agents, ~2M steps/sec on a single GPU.
+**Training (`fc-training/`):** PufferLib 4.0 wrapper. Compiles the C backend into a shared library with CUDA-accelerated vectorized environments. 4096 parallel agents, ~2M steps/sec on a single GPU.
 
-**Viewer (`demo-env/`):** Raylib-based 3D viewer for human play and policy replay. Debug overlay shows reward breakdown, NPC stats, prayer state, threat context.
+**Viewer (`fc-viewer/`):** Raylib-based 3D viewer for human play and policy replay. Debug overlay shows reward breakdown, NPC stats, prayer state, threat context.
 
 **Training stack:** PPO with MinGRU policy (2-layer, 256 hidden, ~439K params). W&B integration for logging and sweep analysis.
 

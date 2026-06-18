@@ -9,7 +9,7 @@ SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SRC_DIR/.." && pwd)"
 PUFFER_DIR="${PUFFER_DIR:-$ROOT_DIR/pufferlib_4}"
 CONFIG_PATH="${CONFIG_PATH:-$SRC_DIR/config/fight_caves.ini}"
-TRAINING_BUILD_SH="$SRC_DIR/training-env/build.sh"
+TRAINING_BUILD_SH="$SRC_DIR/fc-training/build.sh"
 
 if [ ! -d "$PUFFER_DIR" ]; then
     echo "Error: PufferLib not found at $PUFFER_DIR"
@@ -75,7 +75,7 @@ if [ ! -f "$BACKEND_SO" ]; then
     BACKEND_REBUILD_REASON="missing backend"
 elif ! "$PYTHON_BIN" -c "import importlib.util, sys; spec=importlib.util.spec_from_file_location('pufferlib._C', sys.argv[1]); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); ok=(getattr(mod, 'env_name', None) == 'fight_caves' and hasattr(mod, 'create_pufferl')); raise SystemExit(0 if ok else 1)" "$BACKEND_SO"; then
     BACKEND_REBUILD_REASON="backend missing compiled trainer API"
-elif find "$SRC_DIR/fc-core" "$SRC_DIR/training-env" "$PUFFER_DIR/src/vecenv.h" -type f -newer "$BACKEND_SO" -print -quit | grep -q .; then
+elif find "$SRC_DIR/fc-core" "$SRC_DIR/fc-training" "$PUFFER_DIR/src/vecenv.h" -type f -newer "$BACKEND_SO" -print -quit | grep -q .; then
     BACKEND_REBUILD_REASON="backend sources newer than compiled extension"
 elif [ "${FORCE_BACKEND_REBUILD:-0}" = "1" ]; then
     BACKEND_REBUILD_REASON="FORCE_BACKEND_REBUILD=1"

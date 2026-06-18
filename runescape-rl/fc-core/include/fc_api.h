@@ -98,7 +98,7 @@ int fc_terminal_code(const FcState* state);
  * Usage: Call after each fc_step to verify determinism. Two runs with
  * the same (seed, action_sequence) must produce identical hashes at every tick.
  */
-/* Only available when fc_hash.c is linked (demo-env, tests — not training-env) */
+/* Only available when fc_hash.c is linked (fc-viewer, tests — not fc-training) */
 #ifndef FC_NO_HASH
 uint32_t fc_state_hash(const FcState* state);
 #endif

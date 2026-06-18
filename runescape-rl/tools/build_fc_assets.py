@@ -499,7 +499,7 @@ def carry_forward_legacy_item_sprites(sprites_dir: Path) -> None:
     """Keep viewer-required item icons until a cache model icon renderer exists."""
     for name in ("shark.png", "prayer_potion.png"):
         dst = sprites_dir / name
-        src = REPO_ROOT / "demo-env" / "assets" / "sprites" / name
+        src = REPO_ROOT / "fc-viewer" / "assets" / "sprites" / name
         if not dst.exists() and src.exists():
             shutil.copy2(src, dst)
 
@@ -518,7 +518,7 @@ def export_fc_sprites(cache_dir: Path, output: Path) -> None:
 def build_manifest(staging_root: Path, cache_dir: Path) -> dict[str, object]:
     files = []
     generated_roots = [
-        staging_root / "demo-env" / "assets",
+        staging_root / "fc-viewer" / "assets",
         staging_root / "fc-core" / "assets",
     ]
     for root in generated_roots:
@@ -573,7 +573,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--replace",
         action="store_true",
-        help="copy generated files into demo-env/assets and fc-core/assets",
+        help="copy generated files into fc-viewer/assets and fc-core/assets",
     )
     parser.add_argument(
         "--no-clean",
@@ -600,7 +600,7 @@ def main(argv: list[str]) -> int:
 
     if out_dir.exists() and not args.no_clean:
         shutil.rmtree(out_dir)
-    assets_dir = out_dir / "demo-env" / "assets"
+    assets_dir = out_dir / "fc-viewer" / "assets"
     core_assets_dir = out_dir / "fc-core" / "assets"
     sprites_dir = assets_dir / "sprites"
     assets_dir.mkdir(parents=True, exist_ok=True)

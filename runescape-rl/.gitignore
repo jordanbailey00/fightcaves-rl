@@ -35,3 +35,6 @@ Thumbs.db
 **/videos/
 **/checkpoints/
 **/wandb/
+
+# Raw OSRS cache source used to regenerate viewer assets. Keep local only.
+tools/cache_pipeline/source/current_fightcaves_demo/
