@@ -260,7 +260,7 @@ static void process_player_actions(FcState* state, const int actions[FC_NUM_ACTI
     /* ---- Auto-attack current target ---- */
     /* Like Void CombatMovement: if target set, walk toward it until in range,
      * then attack on cooldown. Player stays still once in range. */
-    if (p->attack_target_idx >= 0 && p->ammo_count > 0) {
+    if (p->attack_target_idx >= 0 && (!p->weapon_uses_ammo || p->ammo_count > 0)) {
         FcNpc* target = &state->npcs[p->attack_target_idx];
         if (!target->active || target->is_dead) {
             p->attack_target_idx = -1;  /* target died, clear */
@@ -328,7 +328,8 @@ static void process_player_actions(FcState* state, const int actions[FC_NUM_ACTI
 
                 state->attack_attempt_this_tick = 1;
                 p->attack_timer = p->weapon_speed;
-                p->ammo_count--;
+                if (p->weapon_uses_ammo && p->ammo_count > 0)
+                    p->ammo_count--;
                 p->hit_landed_this_tick = 1;  /* flag for viewer hitsplat */
 
                 /* Safespot: attacked with no NPC adjacent (dist <= 1) */

@@ -111,6 +111,7 @@ static void init_player(FcPlayer* p) {
     p->prayer_level = FC_PLAYER_PRAYER_LVL;
     p->magic_level = FC_PLAYER_MAGIC_LVL;
     p->weapon_kind = FC_PLAYER_WEAPON_KIND;
+    p->weapon_uses_ammo = FC_PLAYER_WEAPON_USES_AMMO;
     p->weapon_speed = FC_PLAYER_WEAPON_SPEED;
     p->weapon_range = FC_PLAYER_WEAPON_RANGE;
     p->ranged_attack_bonus = FC_EQUIP_RANGED_ATK;

@@ -74,6 +74,19 @@ static void clear_manual_tick_signals(FcState* state) {
     state->player.hit_landed_this_tick = 0;
 }
 
+static void apply_test_hp_deficit(FcState* state) {
+    int deficit = 250;  /* Keep the player damaged after one shark heal. */
+    if (state->player.max_hp <= deficit)
+        deficit = state->player.max_hp / 2;
+    if (deficit < 10)
+        deficit = 10;
+    state->player.current_hp = state->player.max_hp - deficit;
+    if (state->player.current_hp < 1)
+        state->player.current_hp = 1;
+    state->player.food_timer = 0;
+    state->player.sharks_remaining = FC_MAX_SHARKS;
+}
+
 /* ====================================================================== */
 /* Test 1: Observation normalization                                       */
 /* ====================================================================== */
@@ -182,22 +195,21 @@ static void test_reward_features(void) {
     if (rwd[FC_RWD_PLAYER_DEATH] < 0.01f) PASS();
     else FAIL("player_death fired at tick 1");
 
-    /* Run until player takes damage (NPCs will attack) */
-    int took_damage = 0;
-    for (int t = 0; t < 200; t++) {
-        memset(actions, 0, sizeof(actions));
-        fc_step(&state, actions);
-        fc_write_obs(&state, obs);
-        rwd = obs + FC_REWARD_START;
-        if (rwd[FC_RWD_DAMAGE_TAKEN] > 0.0f) {
-            took_damage = 1;
-            break;
-        }
-        if (state.terminal != TERMINAL_NONE) break;
-    }
+    /* Queue a deterministic hit so this test is independent of active loadout tankiness. */
+    state.player.prayer = PRAYER_NONE;
+    state.player.num_pending_hits = 0;
+    memset(state.player.pending_hits, 0, sizeof(state.player.pending_hits));
+    fc_npc_spawn(&state.npcs[0], NPC_TOK_XIL, state.player.x + 3, state.player.y, 0);
+    fc_queue_pending_hit(state.player.pending_hits, &state.player.num_pending_hits,
+                         FC_MAX_PENDING_HITS, 30, 1, ATTACK_RANGED, 0, 0);
+    memset(actions, 0, sizeof(actions));
+    fc_step(&state, actions);
+    fc_write_obs(&state, obs);
+    rwd = obs + FC_REWARD_START;
 
     TEST("Damage taken reward fires when NPC hits player");
-    if (took_damage) PASS(); else FAIL("no damage taken in 200 ticks");
+    if (rwd[FC_RWD_DAMAGE_TAKEN] > 0.0f) PASS();
+    else FAIL("queued hit did not produce damage_taken reward");
 
     /* Test food reward: eat a shark */
     if (state.terminal == TERMINAL_NONE && state.player.current_hp < state.player.max_hp) {
@@ -270,13 +282,9 @@ static void test_action_mask(void) {
     TEST("Walk-to-tile Y no-op (0) always valid");
     if (mask[FC_MASK_TARGET_Y_START + 0] > 0.5f) PASS(); else FAIL("target y no-op masked");
 
-    /* After taking damage, eat should become valid */
+    /* After taking damage, eat should become valid. Make this loadout-independent. */
     int actions[FC_NUM_ACTION_HEADS] = {0};
-    for (int t = 0; t < 200; t++) {
-        fc_step(&state, actions);
-        if (state.player.current_hp < state.player.max_hp) break;
-        if (state.terminal != TERMINAL_NONE) break;
-    }
+    apply_test_hp_deficit(&state);
 
     if (state.player.current_hp < state.player.max_hp && state.terminal == TERMINAL_NONE) {
         fc_write_mask(&state, mask);

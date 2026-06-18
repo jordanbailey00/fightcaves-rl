@@ -94,7 +94,6 @@ static const uint16_t NPC_ANIM_DEATH[] = {
 #define PROJ_JAD_RANGED_TRAVEL  448
 #define PROJ_JAD_RANGED_IMPACT  451
 #define PROJ_SPOTANIM_MODEL_BASE 0xA2000000u
-#define FC_PLAYER_MODEL_BASE 0xFC000000u
 
 #define FC_UI_ITEM_VIAL          229u
 #define FC_UI_ITEM_SHARK         385u
@@ -344,35 +343,6 @@ static const char* prayer_potion_label_for_doses(int doses) {
     }
 }
 
-typedef struct {
-    int slot;
-    uint32_t item_id;
-    const char* label;
-} FcUiEquipmentItem;
-
-static const FcUiEquipmentItem FC_UI_LOADOUT_A_EQUIPMENT[] = {
-    {0, 1169, "Coif"},
-    {3, 9185, "Rune crossbow"},
-    {4, 2503, "Black d'hide body"},
-    {6, 9143, "Adamant bolts"},
-    {7, 2497, "Black d'hide chaps"},
-    {9, 2491, "Black d'hide vambraces"},
-    {10, 6328, "Snakeskin boots"},
-};
-
-static const FcUiEquipmentItem FC_UI_LOADOUT_B_EQUIPMENT[] = {
-    {0, 27226, "Masori mask (f)"},
-    {1, 22109, "Ava's assembler"},
-    {2, 19547, "Necklace of anguish"},
-    {3, 20997, "Twisted bow"},
-    {4, 27229, "Masori body (f)"},
-    {6, 11212, "Dragon arrows"},
-    {7, 27232, "Masori chaps (f)"},
-    {9, 26235, "Zaryte vambraces"},
-    {10, 13237, "Pegasian boots"},
-    {12, 27614, "Venator ring"},
-};
-
 static uint32_t fc_ui_active_prayer_bits(int prayer) {
     switch (prayer) {
         case PRAYER_PROTECT_MAGIC: return 1u << 16;
@@ -425,13 +395,19 @@ static void load_fc_ui_item_icons(ViewerState* v) {
         FC_UI_ITEM_VIAL, FC_UI_ITEM_SHARK,
         FC_UI_ITEM_PRAYER_POT_1, FC_UI_ITEM_PRAYER_POT_2,
         FC_UI_ITEM_PRAYER_POT_3, FC_UI_ITEM_PRAYER_POT_4,
-        1169, 2491, 2497, 2503, 6328, 9143, 9185,
-        10499, 11212, 13237, 19547, 20997, 21902, 22109,
-        26235, 27226, 27229, 27232, 27614,
     };
     if (!v) return;
     for (int i = 0; i < (int)(sizeof(ids) / sizeof(ids[0])); i++)
         load_ui_item_icon(&v->ui, ids[i]);
+    for (int li = 0; li < FC_NUM_LOADOUTS; li++) {
+        const FcLoadout* lo = &FC_LOADOUTS[li];
+        for (int ei = 0; ei < lo->equipment_count; ei++) {
+            uint32_t icon_id = lo->equipment[ei].icon_item_id
+                ? lo->equipment[ei].icon_item_id
+                : lo->equipment[ei].item_id;
+            load_ui_item_icon(&v->ui, icon_id);
+        }
+    }
 }
 
 static void sync_fc_ui_items(ViewerState* v) {
@@ -463,19 +439,17 @@ static void sync_fc_ui_items(ViewerState* v) {
     for (int i = 0; i < RUNEC_UI_EQUIP_SLOT_COUNT; i++)
         memset(&v->ui.equipment[i], 0, sizeof(v->ui.equipment[i]));
 
-    const FcUiEquipmentItem* equip = FC_UI_LOADOUT_B_EQUIPMENT;
-    int equip_count = (int)(sizeof(FC_UI_LOADOUT_B_EQUIPMENT)
-                            / sizeof(FC_UI_LOADOUT_B_EQUIPMENT[0]));
-    if (v->active_loadout == 0) {
-        equip = FC_UI_LOADOUT_A_EQUIPMENT;
-        equip_count = (int)(sizeof(FC_UI_LOADOUT_A_EQUIPMENT)
-                            / sizeof(FC_UI_LOADOUT_A_EQUIPMENT[0]));
-    }
-    for (int i = 0; i < equip_count; i++) {
-        if (equip[i].slot >= 0 && equip[i].slot < RUNEC_UI_EQUIP_SLOT_COUNT) {
-            int quantity = equip[i].slot == 6 ? p->ammo_count : 1;
-            set_ui_slot(&v->ui.equipment[equip[i].slot], equip[i].item_id,
-                        equip[i].item_id, quantity, equip[i].label);
+    int loadout = v->active_loadout;
+    if (loadout < 0 || loadout >= FC_NUM_LOADOUTS)
+        loadout = FC_ACTIVE_LOADOUT;
+    const FcLoadout* lo = &FC_LOADOUTS[loadout];
+    for (int i = 0; i < lo->equipment_count; i++) {
+        const FcLoadoutEquipmentItem* equip = &lo->equipment[i];
+        if (equip->slot >= 0 && equip->slot < RUNEC_UI_EQUIP_SLOT_COUNT) {
+            uint32_t icon_id = equip->icon_item_id ? equip->icon_item_id : equip->item_id;
+            int quantity = equip->slot == FC_EQUIP_SLOT_AMMO ? p->ammo_count : 1;
+            set_ui_slot(&v->ui.equipment[equip->slot], equip->item_id,
+                        icon_id, quantity, equip->label);
         }
     }
 }
@@ -498,10 +472,12 @@ static void sync_fc_ui_status(ViewerState* v) {
     v->ui.auto_retaliate = 1;
     v->ui.special_attack_energy = 100;
     v->ui.combat_level = 126;
-    runec_ui_set_combat_weapon_name(&v->ui,
-        p->weapon_kind == FC_WEAPON_TWISTED_BOW ? "Twisted bow" : "Rune crossbow");
-    runec_ui_set_combat_style_profile(&v->ui,
-        p->weapon_kind == FC_WEAPON_TWISTED_BOW ? 25 : 9);
+    int loadout = v->active_loadout;
+    if (loadout < 0 || loadout >= FC_NUM_LOADOUTS)
+        loadout = FC_ACTIVE_LOADOUT;
+    const FcLoadout* lo = &FC_LOADOUTS[loadout];
+    runec_ui_set_combat_weapon_name(&v->ui, lo->weapon_name);
+    runec_ui_set_combat_style_profile(&v->ui, lo->combat_style_profile);
 
     for (int i = 0; i < RUNEC_UI_SKILL_COUNT; i++) {
         v->ui.skill_current[i] = 1;
@@ -641,7 +617,7 @@ static uint32_t viewer_player_model_id(const ViewerState* v) {
     int loadout = v ? v->active_loadout : FC_ACTIVE_LOADOUT;
     if (loadout < 0) loadout = 0;
     if (loadout >= FC_NUM_LOADOUTS) loadout = FC_ACTIVE_LOADOUT;
-    return FC_PLAYER_MODEL_BASE + (uint32_t)loadout;
+    return FC_LOADOUTS[loadout].player_model_id;
 }
 
 static NpcModelEntry* viewer_player_model_entry(ViewerState* v) {
@@ -2836,8 +2812,10 @@ static int draw_inventory_tab(ViewerState* v, int px, int x, int by) {
 static int draw_combat_tab(ViewerState* v, int px, int x, int by) {
     FcPlayer* p = &v->state.player;
     char b[128];
-    const char* weapon_name = p->weapon_kind == FC_WEAPON_TWISTED_BOW
-        ? "Twisted bow" : "Rune crossbow";
+    int loadout = v->active_loadout;
+    if (loadout < 0 || loadout >= FC_NUM_LOADOUTS)
+        loadout = FC_ACTIVE_LOADOUT;
+    const char* weapon_name = FC_LOADOUTS[loadout].weapon_name;
 
     /* Weapon */
     text_s(weapon_name, x, by, 10, COL_TEXT_YELLOW); by += 16;
@@ -3407,6 +3385,7 @@ static void draw_panel(ViewerState* v) {
                     p->defence_level = lo->defence_lvl; p->ranged_level = lo->ranged_lvl;
                     p->prayer_level = lo->prayer_lvl; p->magic_level = lo->magic_lvl;
                     p->weapon_kind = lo->weapon_kind;
+                    p->weapon_uses_ammo = lo->weapon_uses_ammo;
                     p->weapon_speed = lo->weapon_speed;
                     p->weapon_range = lo->weapon_range;
                     p->ranged_attack_bonus = lo->ranged_atk; p->ranged_strength_bonus = lo->ranged_str;

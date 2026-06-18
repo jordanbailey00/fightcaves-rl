@@ -3082,6 +3082,62 @@ static void item_icon_asset_name(const RuneCUiSlot *slot, char *dst, size_t cap)
     snprintf(dst, cap, "item_%u", slot->item_id);
 }
 
+static int label_word_is_filler(const char *word, int len) {
+    return (len == 2 && strncmp(word, "of", 2) == 0) ||
+           (len == 3 && strncmp(word, "the", 3) == 0) ||
+           (len == 3 && strncmp(word, "and", 3) == 0);
+}
+
+static void slot_label_abbrev(const RuneCUiSlot *slot, char *dst, size_t cap) {
+    if (!dst || cap == 0)
+        return;
+    dst[0] = '\0';
+    if (!slot || !slot->label[0])
+        return;
+
+    int out = 0;
+    const char *p = slot->label;
+    while (*p && out < (int)cap - 1) {
+        while (*p && !isalnum((unsigned char)*p))
+            p++;
+        if (!*p)
+            break;
+
+        char word[16];
+        int len = 0;
+        unsigned char first = (unsigned char)*p;
+        while (*p && isalnum((unsigned char)*p)) {
+            if (len < (int)sizeof(word) - 1)
+                word[len++] = (char)tolower((unsigned char)*p);
+            p++;
+        }
+        word[len] = '\0';
+        if (len > 0 && !label_word_is_filler(word, len))
+            dst[out++] = (char)toupper(first);
+    }
+    dst[out] = '\0';
+}
+
+static void draw_slot_label_fallback(const RuneCUiState *ui, const RuneCUiSlot *slot,
+                                     Rectangle r) {
+    char abbr[4];
+    slot_label_abbrev(slot, abbr, sizeof(abbr));
+    if (!abbr[0])
+        return;
+
+    float size = 10.0f;
+    Font font = runec_ui_font_for_size(&ui->assets, size);
+    Vector2 m = MeasureTextEx(font, abbr, size, 0);
+    if (m.x > r.width - 4.0f) {
+        size = 8.0f;
+        font = runec_ui_font_for_size(&ui->assets, size);
+        m = MeasureTextEx(font, abbr, size, 0);
+    }
+    draw_text_shadow(ui, abbr, r.x + (r.width - m.x) * 0.5f,
+                     r.y + (r.height - m.y) * 0.5f, size,
+                     (Color){238, 218, 162, 245});
+}
+
 static Color stack_text_color(int quantity) {
     if (quantity >= 10000000)
         return OSRS_GREEN;
@@ -3157,6 +3213,7 @@ static void draw_inventory_item(const RuneCUiState *ui, const RuneCUiSlot *slot,
         DrawCircle((int)(r.x + 13), (int)(r.y + 21), 6.0f, (Color){238, 204, 72, 255});
     } else {
         DrawRectangleRounded((Rectangle){r.x + 6, r.y + 6, 20, 20}, 0.22f, 4, c);
+        draw_slot_label_fallback(ui, slot, r);
     }
     (void)ui;
 }

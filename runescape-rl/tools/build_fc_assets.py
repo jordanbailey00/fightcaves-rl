@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ DEFAULT_KEYS_PATH = (
     PIPELINE_DIR / "source" / "current_fightcaves_demo" / "data" / "keys.json"
 )
 DEFAULT_OUT_DIR = REPO_ROOT / "build" / "fc_assets_generated"
+LOADOUT_HEADER = REPO_ROOT / "fc-core" / "include" / "fc_player_init.h"
 
 FIGHT_CAVES_REGIONS = [(37, 79)]
 FIGHT_CAVES_NPC_IDS = [3116, 3118, 3120, 3121, 3123, 3125, 3127, 3128]
@@ -34,34 +36,6 @@ FIGHT_CAVES_SPOTANIM_IDS = [
     448,  # Jad ranged travel
     451,  # Jad ranged impact
 ]
-FIGHT_CAVES_PLAYER_LOADOUTS = [
-    (
-        0xFC000000,
-        "A: Black D'hide + RCB",
-        [
-            1169,   # Coif
-            9185,   # Rune crossbow
-            2503,   # Black d'hide body
-            2497,   # Black d'hide chaps
-            2491,   # Black d'hide vambraces
-            6328,   # Snakeskin boots
-        ],
-    ),
-    (
-        0xFC000001,
-        "B: Masori (f) + TBow",
-        [
-            27235,  # Masori mask (f)
-            22109,  # Ava's assembler
-            19547,  # Necklace of anguish
-            20997,  # Twisted bow
-            27238,  # Masori body (f)
-            27241,  # Masori chaps (f)
-            26235,  # Zaryte vambraces
-            13237,  # Pegasian boots
-        ],
-    ),
-]
 FIGHT_CAVES_ANIM_IDS = {
     4591, 4226, 4228, 4230, 829, 836,
     2618, 2619, 2620, 2621,
@@ -71,6 +45,119 @@ FIGHT_CAVES_ANIM_IDS = {
     2642, 2643, 2644, 2646,
     2650, 2651, 2652, 2654, 2655, 2656,
 }
+
+
+def _strip_c_comments(text: str) -> str:
+    return re.sub(r"/\*.*?\*/|//.*?$", "", text, flags=re.S | re.M)
+
+
+def _parse_c_int(text: str) -> int:
+    token = text.strip().rstrip(",")
+    token = re.sub(r"([0-9A-Fa-fx]+)[uUlL]+$", r"\1", token)
+    return int(token, 0)
+
+
+def _parse_loadout_symbols(text: str) -> dict[str, int]:
+    symbols: dict[str, int] = {}
+    base = re.search(r"#define\s+FC_PLAYER_MODEL_BASE\s+([^\s]+)", text)
+    if base:
+        symbols["FC_PLAYER_MODEL_BASE"] = _parse_c_int(base.group(1))
+
+    enum = re.search(r"typedef\s+enum\s*\{(?P<body>.*?)\}\s*FcLoadoutId\s*;",
+                     text, flags=re.S)
+    if enum:
+        next_value = 0
+        for raw in enum.group("body").split(","):
+            line = raw.strip()
+            if not line:
+                continue
+            if "=" in line:
+                name, value = [part.strip() for part in line.split("=", 1)]
+                next_value = _parse_c_int(value)
+            else:
+                name = line
+            symbols[name] = next_value
+            next_value += 1
+    return symbols
+
+
+def _eval_c_int_expr(expr: str, symbols: dict[str, int]) -> int:
+    total = 0
+    for part in expr.split("+"):
+        token = part.strip().rstrip(",")
+        if token in symbols:
+            total += symbols[token]
+        else:
+            total += _parse_c_int(token)
+    return total
+
+
+def _extract_initializer_blocks(text: str, name: str) -> list[str]:
+    start = text.find(name)
+    if start < 0:
+        raise SystemExit(f"could not find {name} in {LOADOUT_HEADER}")
+    open_idx = text.find("{", start)
+    if open_idx < 0:
+        raise SystemExit(f"could not find {name} initializer in {LOADOUT_HEADER}")
+
+    depth = 0
+    end_idx = -1
+    for i in range(open_idx, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                end_idx = i
+                break
+    if end_idx < 0:
+        raise SystemExit(f"unterminated {name} initializer in {LOADOUT_HEADER}")
+
+    content = text[open_idx + 1:end_idx]
+    blocks: list[str] = []
+    depth = 0
+    block_start = -1
+    for i, ch in enumerate(content):
+        if ch == "{":
+            if depth == 0:
+                block_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and block_start >= 0:
+                blocks.append(content[block_start:i + 1])
+                block_start = -1
+    return blocks
+
+
+def load_player_loadouts_from_header() -> list[tuple[int, str, list[int]]]:
+    raw = LOADOUT_HEADER.read_text()
+    symbols = _parse_loadout_symbols(raw)
+    text = _strip_c_comments(raw)
+    loadouts: list[tuple[int, str, list[int]]] = []
+    for block in _extract_initializer_blocks(text, "FC_LOADOUTS"):
+        name = re.search(r"\.name\s*=\s*\"([^\"]+)\"", block)
+        model_id = re.search(r"\.player_model_id\s*=\s*([^,\n]+)", block)
+        item_ids = re.search(r"\.model_item_ids\s*=\s*\{(?P<ids>.*?)\}",
+                             block, flags=re.S)
+        item_count = re.search(r"\.model_item_count\s*=\s*(\d+)", block)
+        if not (name and model_id and item_ids and item_count):
+            raise SystemExit(f"incomplete loadout metadata in {LOADOUT_HEADER}:\n{block}")
+        ids = [
+            _parse_c_int(piece)
+            for piece in item_ids.group("ids").split(",")
+            if piece.strip()
+        ]
+        ids = ids[:int(item_count.group(1))]
+        loadouts.append((
+            _eval_c_int_expr(model_id.group(1), symbols),
+            name.group(1),
+            ids,
+        ))
+    return loadouts
+
+
+FIGHT_CAVES_PLAYER_LOADOUTS = load_player_loadouts_from_header()
 
 
 def is_under(path: Path, root: Path) -> bool:

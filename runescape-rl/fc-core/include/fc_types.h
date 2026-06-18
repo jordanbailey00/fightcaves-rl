@@ -180,6 +180,7 @@ typedef struct {
     int prayer_level;
     int magic_level;
     int weapon_kind;
+    int weapon_uses_ammo;
     int weapon_speed;
     int weapon_range;
 
