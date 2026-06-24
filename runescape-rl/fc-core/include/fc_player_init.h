@@ -9,7 +9,8 @@
  * SINGLE FILE for all player configuration. Change skills, gear,
  * consumables here — both fc-training and fc-viewer use this.
  *
- * Training uses FC_ACTIVE_LOADOUT (set below) at compile time.
+ * Training uses FC_ACTIVE_LOADOUT at compile time. It defaults below and can be
+ * overridden by the build system, for example -DFC_ACTIVE_LOADOUT=FC_LOADOUT_BOWFA_CRYSTAL.
  * The viewer can switch loadouts at runtime via the loadout dropdown.
  */
 
@@ -34,15 +35,9 @@ typedef enum {
     FC_LOADOUT_COUNT
 } FcLoadoutId;
 
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_BLACK_DHIDE_RCB */
+#ifndef FC_ACTIVE_LOADOUT
 #define FC_ACTIVE_LOADOUT FC_LOADOUT_SOTA_TBOW
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_LOW_DEF_RCB */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_RCB_PURE */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_MSBI_PURE */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_BLOWPIPE_PURE */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_ACB_ARMADYL */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_BOWFA_CRYSTAL */
-/* #define FC_ACTIVE_LOADOUT FC_LOADOUT_TBOW_MASORI */
+#endif
 
 /* ======================================================================== */
 /* Loadout definitions                                                       */

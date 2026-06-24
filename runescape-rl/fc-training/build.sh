@@ -19,23 +19,37 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 DEFAULT_PUFFERLIB_DIR="$(cd "$REPO_DIR/.." && pwd)/pufferlib_4"
 PUFFERLIB_DIR="${PUFFERLIB_DIR:-$DEFAULT_PUFFERLIB_DIR}"
 VENV_DIR="$REPO_DIR/.venv"
+python_has_training_deps() {
+    "$1" -c "import numpy, pybind11, torch" >/dev/null 2>&1
+}
+
 if [ -z "${PYTHON_BIN:-}" ]; then
-    if [ -x "$VENV_DIR/bin/python3" ]; then
+    if [ -x "$VENV_DIR/bin/python3" ] && python_has_training_deps "$VENV_DIR/bin/python3"; then
         PYTHON_BIN="$VENV_DIR/bin/python3"
-    elif [ -x "$VENV_DIR/bin/python" ]; then
+    elif [ -x "$VENV_DIR/bin/python" ] && python_has_training_deps "$VENV_DIR/bin/python"; then
         PYTHON_BIN="$VENV_DIR/bin/python"
-    elif command -v python3 >/dev/null 2>&1; then
+    elif command -v python3 >/dev/null 2>&1 && python_has_training_deps "$(command -v python3)"; then
         PYTHON_BIN="$(command -v python3)"
-    elif command -v python >/dev/null 2>&1; then
+    elif command -v python >/dev/null 2>&1 && python_has_training_deps "$(command -v python)"; then
         PYTHON_BIN="$(command -v python)"
     else
-        echo "Error: python not found. Create $VENV_DIR or install python3." >&2
+        echo "Error: no usable python found. Install numpy, pybind11, and torch in $VENV_DIR or set PYTHON_BIN." >&2
         exit 1
     fi
+elif ! python_has_training_deps "$PYTHON_BIN"; then
+    echo "Error: PYTHON_BIN=$PYTHON_BIN is missing numpy, pybind11, or torch." >&2
+    exit 1
 fi
 export PYTHON_BIN
-export VIRTUAL_ENV="$VENV_DIR"
-export PATH="$VENV_DIR/bin:$PATH"
+case "$PYTHON_BIN" in
+    "$VENV_DIR"/*)
+        export VIRTUAL_ENV="$VENV_DIR"
+        export PATH="$VENV_DIR/bin:$PATH"
+        ;;
+    *)
+        unset VIRTUAL_ENV
+        ;;
+esac
 
 if [ ! -d "$PUFFERLIB_DIR/src" ]; then
     echo "Error: PufferLib not found at $PUFFERLIB_DIR"
@@ -98,6 +112,20 @@ else
     CLANG_OPT=(-O2 -DNDEBUG "${CLANG_WARN[@]}")
 fi
 
+ACTIVE_LOADOUT_FLAGS=()
+if [ -n "${FC_ACTIVE_LOADOUT:-}" ]; then
+    case "$FC_ACTIVE_LOADOUT" in
+        FC_LOADOUT_*|[0-9]*)
+            ACTIVE_LOADOUT_FLAGS=(-DFC_ACTIVE_LOADOUT="$FC_ACTIVE_LOADOUT")
+            echo "Active loadout override: $FC_ACTIVE_LOADOUT"
+            ;;
+        *)
+            echo "Error: invalid FC_ACTIVE_LOADOUT '$FC_ACTIVE_LOADOUT'" >&2
+            exit 1
+            ;;
+    esac
+fi
+
 mkdir -p build
 
 # Standalone executable (for testing without Python)
@@ -106,7 +134,7 @@ if [ "$MODE" = "local" ] || [ "$MODE" = "fast" ]; then
     ${CC:-gcc} "${CLANG_OPT[@]}" \
         -I"$PUFFERLIB_DIR/src" -I"$SRC_DIR" -I"$FC_CORE_INCLUDE" -I"$FC_CORE_SRC" \
         -I"$RAYLIB_NAME/include" \
-        -DPLATFORM_DESKTOP -DFC_NO_HASH $RENDER_FLAGS \
+        -DPLATFORM_DESKTOP -DFC_NO_HASH "${ACTIVE_LOADOUT_FLAGS[@]}" $RENDER_FLAGS \
         "$SRC_DIR/$ENV.c" -o "$ENV" \
         "$RAYLIB_A" \
         /usr/lib/x86_64-linux-gnu/libGL.so.1 -lm -lpthread -fopenmp $RENDER_LIBS
@@ -122,7 +150,7 @@ echo "Compiling static library for $ENV..."
 ${CC:-gcc} -c "${CLANG_OPT[@]}" \
     -I"$PUFFERLIB_DIR/src" -I"$SRC_DIR" -I"$FC_CORE_INCLUDE" -I"$FC_CORE_SRC" \
     -I"$RAYLIB_NAME/include" \
-    -DPLATFORM_DESKTOP -DFC_NO_HASH $RENDER_FLAGS \
+    -DPLATFORM_DESKTOP -DFC_NO_HASH "${ACTIVE_LOADOUT_FLAGS[@]}" $RENDER_FLAGS \
     -fno-semantic-interposition -fvisibility=hidden \
     -fPIC -fopenmp \
     "$BINDING_SRC" -o "$STATIC_OBJ"
@@ -152,6 +180,7 @@ if [ "$MODE" = "cpu" ]; then
         -I"$PYTHON_INCLUDE" -I"$PYBIND_INCLUDE" \
         -DOBS_TENSOR_T=$OBS_TENSOR_T \
         -DENV_NAME=$ENV \
+        "${ACTIVE_LOADOUT_FLAGS[@]}" \
         $PRECISION -O2 \
         src/bindings_cpu.cpp -o build/bindings_cpu.o
 
@@ -235,6 +264,7 @@ else
         -Xcompiler=-fopenmp \
         -DOBS_TENSOR_T=$OBS_TENSOR_T \
         -DENV_NAME=$ENV \
+        "${ACTIVE_LOADOUT_FLAGS[@]}" \
         $PRECISION $RENDER_NVCC_FLAGS -O2 --threads 0 \
         src/bindings.cu -o build/bindings.o
 

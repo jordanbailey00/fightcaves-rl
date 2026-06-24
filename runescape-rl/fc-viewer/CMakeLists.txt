@@ -50,6 +50,7 @@ target_include_directories(test_headless PRIVATE
     ${PROJECT_SOURCE_DIR}/fc-core/include
 )
 target_link_libraries(test_headless PRIVATE fc_core m)
+add_test(NAME test_headless COMMAND test_headless)
 
 add_executable(validate_assets
     tests/validate_assets.c

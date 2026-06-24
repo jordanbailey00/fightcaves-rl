@@ -2052,7 +2052,7 @@ static void draw_scene(ViewerState* v) {
         DrawCircleLines(sx, sy, 12, (Color){0, 0, 0, (unsigned char)(alpha * 200)});
 
         /* Damage number centered in circle */
-        char dmg_str[8];
+        char dmg_str[16];
         snprintf(dmg_str, sizeof(dmg_str), "%d", dmg);
         int tw = MeasureText(dmg_str, 14);
         DrawText(dmg_str, sx - tw/2, sy - 7, 14, text_col);
